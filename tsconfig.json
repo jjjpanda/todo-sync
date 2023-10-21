@@ -1,4 +1,5 @@
 {
+  "extends": "@tsconfig/node16/tsconfig.json",
   "compilerOptions": {
     "baseUrl": ".",
     "inlineSourceMap": true,
@@ -7,18 +8,24 @@
     "target": "ES6",
     "allowJs": true,
     "noImplicitAny": true,
+    "resolveJsonModule": true,
     "moduleResolution": "node",
     "importHelpers": true,
     "isolatedModules": true,
+    "allowSyntheticDefaultImports": true,
 	"strictNullChecks": true,
     "lib": [
       "DOM",
       "ES5",
       "ES6",
-      "ES7"
+      "ES7",
+      "ES2021"
     ]
   },
   "include": [
     "**/*.ts"
-  ]
+  ],
+  "exclude": [
+		"node_modules"
+	]
 }
