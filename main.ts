@@ -3,7 +3,6 @@ import { ToDoSettings } from 'lib/ToDoSettings';
 import { TodoServer } from 'lib/ToDoServer';
 import { WorkspaceLeaf, MarkdownView, Notice, Plugin, TFile} from 'obsidian';
 import { ObsidianUtils } from 'lib/obsidianUtils';
-import { SampleModal } from 'lib/SampleModal';
 import { SettingsTab } from 'lib/SettingsTab';
 import {CardManager} from './lib/CardManager'
 import { MSLoginEvent } from 'lib/MSLoginEvent';
