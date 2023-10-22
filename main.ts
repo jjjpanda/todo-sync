@@ -8,6 +8,8 @@ import {CardManager} from './lib/CardManager'
 import { MSLoginEvent } from 'lib/MSLoginEvent';
 import {TaskExtracter} from "./lib/TaskExtracter"
 import {ToDoExtracter} from "./lib/ToDoExtracter"
+import TaskDelta from "./lib/TaskDelta"
+
 export default class ToDoPlugin extends Plugin {
 	settings: ToDoSettings;
 	private server: TodoServer;
@@ -74,12 +76,16 @@ export default class ToDoPlugin extends Plugin {
 			this.registerInterval(
 				window.setInterval(
 					async () => {
-
-						//syncing
 						const taskLists = await TaskExtracter.parseTasks(this.app, this.synchronizer.kanbanCards)
 						const todoLists = await ToDoExtracter.getToDoTasks(this.server)
 
 						console.log(taskLists, todoLists)
+
+						//compare the two lists
+						const missingFromCloud = TaskDelta.getTaskDelta(taskLists, todoLists)
+						const missingFromLocal = TaskDelta.getTaskDelta(todoLists, taskLists)
+						console.log("missing from cloud", missingFromCloud, "missing from local", missingFromLocal)
+
 					}, 
 					Number(this.settings.SYNC_RATE)
 				)
@@ -108,8 +114,6 @@ export default class ToDoPlugin extends Plugin {
 		
 			
 		})
-
-		// When registering intervals, this function will automatically clear the interval when the plugin is disabled.
 		
 	}
 
