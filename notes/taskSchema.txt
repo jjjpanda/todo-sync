@@ -1,0 +1,11 @@
+- [(""|"/"|"x"|"B"|"!")] (title) [due:: date] [time:: (H|HH|HH:mm) (am | pm)] [priority:: (lowest|low|medium|""|high|highest)]
+
+{
+    title: title [priority:: (v|vv|o|""|^|^^)],
+    dueDateTime: {
+        dateTime: "YYYY-MM-DDTHH:mm:ss.nnnnnn"
+        timeZone: "America/New_York"
+    }
+    status: status:(notStarted|inProgress|completed|deferred|waitingOnOthers)
+    importance: status:("/") ? "high" : "normal"
+}

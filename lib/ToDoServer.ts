@@ -3,8 +3,9 @@ import { Server } from 'http';
 import { Notice } from 'obsidian';
 import { ObsidianUtils } from './obsidianUtils';
 import { ToDoSettings } from './ToDoSettings';
-import {graphClient} from "./graph"
+import {GraphClient} from "./graphClient"
 import {ConfidentialClientApplication, LogLevel} from "@azure/msal-node"
+import {MSLoginEvent} from "./MSLoginEvent"
 
 export class TodoServer {
 	private _app: express.Application;
@@ -13,10 +14,12 @@ export class TodoServer {
 	private _settings: ToDoSettings;
     private _baseDirectory: string;
 	private _pluginDirectory: string;
-	private session: {userId: string};
+	private session: {userId: string, loggedIn: boolean};
 	private msalConfig: {}
+	private graphClient: GraphClient
+	private popupInstance: Window;
 	private msalClient: ConfidentialClientApplication
-	private users: {}[]
+	private users: {}
 
 	constructor(utils: ObsidianUtils, settings: ToDoSettings) {
 		this._settings = settings;
@@ -25,7 +28,8 @@ export class TodoServer {
 		this._baseDirectory = utils.getVaultDirectory();
 		this._pluginDirectory = utils.getPluginDirectory();
 		this._app = express();
-		this.users = []
+		this.users = {}
+		this.session = {userId: "", loggedIn: false}
 		this.msalConfig = {
 			auth: {
 			  clientId: settings.OAUTH_CLIENT_ID || '',
@@ -45,8 +49,39 @@ export class TodoServer {
 		this.msalClient = new ConfidentialClientApplication(this.msalConfig)
 	}
 
+	setPopUpInstance(popup: Window){
+		console.log("server now holds popup instance")
+		this.popupInstance = popup;
+	}
+
+	async getTasks () {
+		if(this.session.loggedIn){
+			return await this.graphClient.getUserTasksList()
+		}
+	}
+
+	async getTaskItems (id) {
+		if(this.session.loggedIn){
+			return await this.graphClient.getUserTaskListItems(id)
+		}
+	}
+
+	async addTaskItems (id){
+		if(this.session.loggedIn){
+			return await this.graphClient.upsertUserTaskListItems(id)
+		}
+	}
+
 	getUrl(): URL {
 		return new URL(`http://localhost:${this._port}`);
+	}
+
+	getSession(){
+		return this.session;
+	}
+
+	getUsers(id){
+		return this.users[id]
 	}
 
 	async signIn() {
@@ -67,8 +102,15 @@ export class TodoServer {
 
 	start() {
 		this._app.get('/', async (req, res) => {
-			//iframe with postmessage to parent???/
-			res.send("<body>bruh</body");
+			if(this.popupInstance){
+				this.popupInstance.close()
+			}
+			res.send(`
+			<body>
+				Please close this webpage
+				<script>document.addEventListener("onunload", () => window.open("obsidian://open", "_blank"))</script>
+			</body>
+			`);
 		});
 
 		this._app.use('/auth/callback', async (req, res) => {
@@ -84,24 +126,28 @@ export class TodoServer {
 				const response = await this.msalClient.acquireTokenByCode(tokenRequest);
 	
 				this.session.userId = response.account.homeAccountId;
+				this.session.loggedIn = true;
 		
-				const user = await graphClient.getUserDetails(
+				this.graphClient = new GraphClient(
 					this.msalClient,
 					this.session.userId,
 					this._settings
-				);
+				)
+
+				const user = await this.graphClient.getUserDetails();
 		
 				// Add the user to user storage
 				this.users[this.session.userId] = {
-				displayName: user.displayName,
-				email: user.mail || user.userPrincipalName,
-				timeZone: user.mailboxSettings.timeZone
+					displayName: user.displayName,
+					email: user.mail || user.userPrincipalName,
+					timeZone: user.mailboxSettings.timeZone
 				};
+				document.dispatchEvent(new MSLoginEvent("change"))
 			} catch(error) {
 				console.error(JSON.stringify(error, Object.getOwnPropertyNames(error)), error)
 			}
 		
-			res.redirect('/');
+			res.redirect("/");
 		});
 
 		this._app.use("/auth/signout", async (req, res) => {
@@ -124,7 +170,7 @@ export class TodoServer {
 			}
 		
 			// Destroy the user's session
-			this.session = {userId: ""}
+			this.session = {userId: "", loggedIn: false}
 		})
 
 		this._server = this._app

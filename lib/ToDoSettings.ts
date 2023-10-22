@@ -5,4 +5,6 @@ export interface ToDoSettings {
 	OAUTH_SCOPES: string;
 	OAUTH_AUTHORITY: string;
 	PORT: string;
+	TASK_FOLDER: string;
+	SYNC_RATE: string;
 }
