@@ -6,6 +6,8 @@ import { ObsidianUtils } from 'lib/obsidianUtils';
 import { SettingsTab } from 'lib/SettingsTab';
 import {CardManager} from './lib/CardManager'
 import { MSLoginEvent } from 'lib/MSLoginEvent';
+import {TaskExtracter} from "./lib/TaskExtracter"
+import {ToDoExtracter} from "./lib/ToDoExtracter"
 export default class ToDoPlugin extends Plugin {
 	settings: ToDoSettings;
 	private server: TodoServer;
@@ -72,15 +74,12 @@ export default class ToDoPlugin extends Plugin {
 			this.registerInterval(
 				window.setInterval(
 					async () => {
-						// const promisedTasks = this.server.getTasks();
-						
-						// promisedTasks
-						// 	.then(tasks => Promise.all(tasks.value.map(list => this.server.getTaskItems(list.id))))
-						// 	.then(taskItems => taskItems.map(items => items.value))
-						// 	.then(taskItems => console.debug(taskItems))
 
 						//syncing
-						
+						const taskLists = await TaskExtracter.parseTasks(this.app, this.synchronizer.kanbanCards)
+						const todoLists = await ToDoExtracter.getToDoTasks(this.server)
+
+						console.log(taskLists, todoLists)
 					}, 
 					Number(this.settings.SYNC_RATE)
 				)

@@ -1,7 +1,11 @@
 - [(""|"/"|"x"|"B"|"!")] (title) [due:: date] [time:: (H|HH|HH:mm) (am | pm)] [priority:: (lowest|low|medium|""|high|highest)]
 
 {
-    title: title [priority:: (v|vv|o|""|^|^^)],
+    title: title,
+    body: {
+        content: "(v|vv|o|""|^|^^)",
+        contentType: "text"
+    }
     dueDateTime: {
         dateTime: "YYYY-MM-DDTHH:mm:ss.nnnnnn"
         timeZone: "America/New_York"
