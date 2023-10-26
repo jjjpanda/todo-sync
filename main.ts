@@ -1,26 +1,25 @@
-import { DEFAULT_SETTINGS } from 'lib/DEFAULT_SETTINGS';
-import { ToDoSettings } from 'lib/ToDoSettings';
-import { TodoServer } from 'lib/ToDoServer';
-import { WorkspaceLeaf, MarkdownView, Notice, Plugin, TFile} from 'obsidian';
+import ToDoSettings, { DEFAULT_SETTINGS } from 'lib/ToDoSettings';
+import MSAuthServer from 'lib/MSAuthServer';
+import { Plugin } from 'obsidian';
 import { ObsidianUtils } from 'lib/obsidianUtils';
-import { SettingsTab } from 'lib/SettingsTab';
-import {CardManager} from './lib/CardManager'
+import SettingsTab from 'lib/SettingsTab';
+import CardManager from './lib/CardManager'
 import { MSLoginEvent } from 'lib/MSLoginEvent';
 import {TaskExtracter} from "./lib/TaskExtracter"
 import {ToDoExtracter} from "./lib/ToDoExtracter"
 import TaskDelta from "./lib/TaskDelta"
+import ToDoUploader from "./lib/ToDoUploader"
 
 export default class ToDoPlugin extends Plugin {
 	settings: ToDoSettings;
-	private server: TodoServer;
+	private server: MSAuthServer;
 	private obsidianUtils: ObsidianUtils;
 	private synchronizer: CardManager;
 
 	async onload() {
 		await this.loadSettings();
-		// This adds a settings tab so the user can configure various aspects of the plugin
-		this.addSettingTab(new SettingsTab(this.app, this));
 
+		this.addSettingTab(new SettingsTab(this.app, this));
 		if(!this.settings.OAUTH_CLIENT_SECRET){
 			console.error("no client secret")
 			return
@@ -30,15 +29,17 @@ export default class ToDoPlugin extends Plugin {
 			return
 		}
 
-		this.obsidianUtils = new ObsidianUtils(this.app);
-		this.server = new TodoServer(this.obsidianUtils, this.settings)
+		this.server = new MSAuthServer(this.settings)
 		this.server.start()
 
-		// const keyRibbonButton = this.addRibbonIcon('key', '----hover text---', (evt: MouseEvent) => {
-		// 	// Called when the user clicks the icon.
-		// 	new Notice('this is where msft login happens');
-		// });
 
+
+
+
+
+		this.obsidianUtils = new ObsidianUtils(this.app);
+
+		
 		try{
 			const callbackUrl = await this.server.signIn()
 
@@ -85,6 +86,10 @@ export default class ToDoPlugin extends Plugin {
 						const missingFromCloud = TaskDelta.getTaskDelta(taskLists, todoLists)
 						const missingFromLocal = TaskDelta.getTaskDelta(todoLists, taskLists)
 						console.log("missing from cloud", missingFromCloud, "missing from local", missingFromLocal)
+
+
+						//upload to cloud
+						ToDoUploader.upload(this.server, missingFromCloud)
 
 					}, 
 					Number(this.settings.SYNC_RATE)

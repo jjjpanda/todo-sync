@@ -1,19 +1,16 @@
 import express from 'express';
 import { Server } from 'http';
 import { Notice } from 'obsidian';
-import { ObsidianUtils } from './obsidianUtils';
 import { ToDoSettings } from './ToDoSettings';
 import {GraphClient} from "./graphClient"
 import {ConfidentialClientApplication, LogLevel} from "@azure/msal-node"
 import {MSLoginEvent} from "./MSLoginEvent"
 
-export class TodoServer {
+export default class MSAuthServer {
 	private _app: express.Application;
 	private _port = 3000;
 	private _server: Server;
 	private _settings: ToDoSettings;
-    private _baseDirectory: string;
-	private _pluginDirectory: string;
 	private session: {userId: string, loggedIn: boolean};
 	private msalConfig: {}
 	private graphClient: GraphClient
@@ -21,12 +18,10 @@ export class TodoServer {
 	private msalClient: ConfidentialClientApplication
 	private users: {}
 
-	constructor(utils: ObsidianUtils, settings: ToDoSettings) {
+	constructor(settings: ToDoSettings) {
 		this._settings = settings;
 		const numPort = Number(settings.PORT);
 		this._port = isNaN(numPort) ? 3000 : numPort;
-		this._baseDirectory = utils.getVaultDirectory();
-		this._pluginDirectory = utils.getPluginDirectory();
 		this._app = express();
 		this.users = {}
 		this.session = {userId: "", loggedIn: false}

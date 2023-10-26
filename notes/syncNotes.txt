@@ -1,0 +1,26 @@
+app start
+
+(O - origin, R - Remote)
+
+analyze local files (O)
+pull list from cloud (R)
+
+compare -> create delta
+
+O <- + R (will have ID's)
+O + -> R (may have ID's)
+
+add ID's to O
+
+on modification (addition/deletion) of local files -> add to `missing from cloud` list
+
+on sync_rate amount of time
+pull list from cloud (R)
+
+compare -> create delta
+
+O <- + R (will have ID's)
+O + -> R (may have ID's)
+O - -> R
+
+Add ID's to O

@@ -1,7 +1,7 @@
 import { App, PluginSettingTab, Setting } from 'obsidian';
 import ToDoPlugin from 'main';
 
-export class SettingsTab extends PluginSettingTab {
+export default class SettingsTab extends PluginSettingTab {
 	plugin: ToDoPlugin;
 
 	constructor(app: App, plugin: ToDoPlugin) {
