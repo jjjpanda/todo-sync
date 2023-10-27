@@ -13,14 +13,14 @@ compare -> create delta
 [toRemote.add]
 [toRemote.modify]
 
-add IDs to remote additions in origin
+add IDs of remote additions in origin
 
 on (addition/modification/deletion) of local files -> add to `toRemote` list
 
 on sync_rate amount of time
 pull list from cloud (R)
 
-compare -> create delta
+compare -> create delta (using queued toRemote list)
 
 [toOrigin.add]
 [toOrigin.modify]
@@ -29,4 +29,5 @@ compare -> create delta
 [toRemote.modify]
 [toRemote.delete]
 
-add IDs to remote additions in origin
+add IDs of remote additions in origin
+reset toRemote list
