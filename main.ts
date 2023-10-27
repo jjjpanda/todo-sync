@@ -1,12 +1,12 @@
 import ToDoSettings, { DEFAULT_SETTINGS } from 'lib/ToDoSettings';
 import MSAuthServer from 'lib/MSAuthServer';
-import { Plugin } from 'obsidian';
-import { ObsidianUtils } from 'lib/obsidianUtils';
+import { Plugin, Notice } from 'obsidian';
+import ObsidianUtils from 'lib/obsidianUtils';
 import SettingsTab from 'lib/SettingsTab';
 import CardManager from './lib/CardManager'
-import { MSLoginEvent } from 'lib/MSLoginEvent';
-import {TaskExtracter} from "./lib/TaskExtracter"
-import {ToDoExtracter} from "./lib/ToDoExtracter"
+import MSLoginEvent from 'lib/MSLoginEvent';
+import TaskExtracter from "./lib/TaskExtracter"
+import ToDoExtracter from "./lib/ToDoExtracter"
 import TaskDelta from "./lib/TaskDelta"
 import ToDoUploader from "./lib/ToDoUploader"
 
@@ -20,26 +20,16 @@ export default class ToDoPlugin extends Plugin {
 		await this.loadSettings();
 
 		this.addSettingTab(new SettingsTab(this.app, this));
-		if(!this.settings.OAUTH_CLIENT_SECRET){
-			console.error("no client secret")
-			return
-		}
-		if(!this.settings.OAUTH_CLIENT_ID){
-			console.error("no client id")
+		if(!this.settings.OAUTH_CLIENT_SECRET || !this.settings.OAUTH_CLIENT_ID){
+			new Notice("no client secret/id")
 			return
 		}
 
 		this.server = new MSAuthServer(this.settings)
 		this.server.start()
 
-
-
-
-
-
 		this.obsidianUtils = new ObsidianUtils(this.app);
 
-		
 		try{
 			const callbackUrl = await this.server.signIn()
 
@@ -54,21 +44,21 @@ export default class ToDoPlugin extends Plugin {
 			})
 		} catch(error){
 			console.error(error)
+			new Notice("error with logging in")
+			return
 		}
 
 		const statusBarNameFromMS = this.addStatusBarItem();
 		statusBarNameFromMS.setText("Loading...")
 
-
 		this.synchronizer = new CardManager(this.app, this.settings.TASK_FOLDER)
 		
-		// If the plugin hooks up any global DOM events (on parts of the app that doesn't belong to this plugin)
-		// Using this function will automatically remove the event listener when this plugin is disabled.
 		this.registerDomEvent(document, "change", (evt: MSLoginEvent) => {
 			const session = this.server.getSession()
 			console.log("MICROSOFT LOGIN EVENT", session, evt)
 
 			if(!session.loggedIn){
+				new Notice("error with logging in")
 				return
 			}
 
@@ -116,8 +106,7 @@ export default class ToDoPlugin extends Plugin {
 					console.log(file)
 				}
 			}));
-		
-			
+	
 		})
 		
 	}

@@ -2,7 +2,7 @@ import { readFileSync } from 'fs-extra';
 import { App, FileSystemAdapter } from 'obsidian';
 import path from 'path';
 
-export class ObsidianUtils {
+export default class ObsidianUtils {
 	private app: App;
 	private fileSystem: FileSystemAdapter;
 
