@@ -1,10 +1,10 @@
 import express from 'express';
 import { Server } from 'http';
 import { Notice } from 'obsidian';
-import { ToDoSettings } from './ToDoSettings';
-import {GraphClient} from "./graphClient"
+import  ToDoSettings from './ToDoSettings';
+import GraphClient from "./graphClient"
 import {ConfidentialClientApplication, LogLevel} from "@azure/msal-node"
-import {MSLoginEvent} from "./MSLoginEvent"
+import MSLoginEvent from "./MSLoginEvent"
 
 export default class MSAuthServer {
 	private _app: express.Application;
@@ -182,4 +182,10 @@ export default class MSAuthServer {
 		this._server.close();
 		console.log(`server stopped`);
 	}
+}
+
+export class MSLoginEvent extends Event{
+    constructor(type){
+        super(type)
+    }
 }

@@ -1,20 +1,15 @@
-import ToDoSettings, { DEFAULT_SETTINGS } from 'lib/ToDoSettings';
-import MSAuthServer from 'lib/MSAuthServer';
 import { Plugin, Notice } from 'obsidian';
-import ObsidianUtils from 'lib/obsidianUtils';
+
+import ToDoSettings, { DEFAULT_SETTINGS } from 'lib/ToDoSettings';
 import SettingsTab from 'lib/SettingsTab';
-import CardManager from './lib/CardManager'
-import MSLoginEvent from 'lib/MSLoginEvent';
-import TaskExtracter from "./lib/TaskExtracter"
-import ToDoExtracter from "./lib/ToDoExtracter"
-import TaskDelta from "./lib/TaskDelta"
-import ToDoUploader from "./lib/ToDoUploader"
+
+import MSAuthServer, {MSLoginEvent} from 'lib/MSAuthServer';
+import TaskSync from './lib/TaskSync'
 
 export default class ToDoPlugin extends Plugin {
 	settings: ToDoSettings;
 	private server: MSAuthServer;
-	private obsidianUtils: ObsidianUtils;
-	private synchronizer: CardManager;
+	private taskSync: TaskSync
 
 	async onload() {
 		await this.loadSettings();
@@ -27,8 +22,6 @@ export default class ToDoPlugin extends Plugin {
 
 		this.server = new MSAuthServer(this.settings)
 		this.server.start()
-
-		this.obsidianUtils = new ObsidianUtils(this.app);
 
 		try{
 			const callbackUrl = await this.server.signIn()
@@ -51,9 +44,10 @@ export default class ToDoPlugin extends Plugin {
 		const statusBarNameFromMS = this.addStatusBarItem();
 		statusBarNameFromMS.setText("Loading...")
 
-		this.synchronizer = new CardManager(this.app, this.settings.TASK_FOLDER)
-		
-		this.registerDomEvent(document, "change", (evt: MSLoginEvent) => {
+		this.taskSync = new TaskSync(this.app, this.settings.TASK_FOLDER)
+		await this.taskSync.syncCards()
+
+		this.registerDomEvent(document, "change", async (evt: MSLoginEvent) => {
 			const session = this.server.getSession()
 			console.log("MICROSOFT LOGIN EVENT", session, evt)
 
@@ -64,51 +58,42 @@ export default class ToDoPlugin extends Plugin {
 
 			const user = this.server.getUsers(session.userId)
 			statusBarNameFromMS.setText(user.displayName);
+
+			this.taskSync.initialResolution()
+
 			this.registerInterval(
 				window.setInterval(
 					async () => {
-						const taskLists = await TaskExtracter.parseTasks(this.app, this.synchronizer.kanbanCards)
-						const todoLists = await ToDoExtracter.getToDoTasks(this.server)
-
-						console.log(taskLists, todoLists)
-
-						//compare the two lists
-						const missingFromCloud = TaskDelta.getTaskDelta(taskLists, todoLists)
-						const missingFromLocal = TaskDelta.getTaskDelta(todoLists, taskLists)
-						console.log("missing from cloud", missingFromCloud, "missing from local", missingFromLocal)
-
-
-						//upload to cloud
-						ToDoUploader.upload(this.server, missingFromCloud)
-
+						this.taskSync.periodicResolution(this.app, this.taskSync.taskManager, this.server)
 					}, 
 					Number(this.settings.SYNC_RATE)
 				)
-			);
+			)
 
-			this.synchronizer.syncKanbanCards()
 			this.registerEvent(this.app.vault.on('create', async (file) => {
 				console.log('created', file)
-				await this.synchronizer.syncKanbanCards();
+				this.taskSync.queueAdditionToRemote()
+				await this.taskSync.syncCards()
 			}))
 			this.registerEvent(this.app.vault.on('rename', async (file, oldPath) => {
 				console.log('renamed', file, "from", oldPath)
-				await this.synchronizer.syncKanbanCards();
+				this.taskSync.queueModificationToRemote()
+				await this.taskSync.syncCards()
 			}))
 			this.registerEvent(this.app.vault.on('delete', async (file) => {
 				console.log('deleted', file)
-				await this.synchronizer.syncKanbanCards();
+				this.taskSync.queueDeletionToRemote()
+				await this.taskSync.syncCards()
 			}))
 
 			this.registerEvent(this.app.vault.on('modify', async (file) => {
-				const cardIndex = this.synchronizer.findKanbanCard(file)
+				const cardIndex = this.taskSync.taskManager.findKanbanCard(file)
 				if(cardIndex != -1){
 					console.log(file)
+					this.taskSync.queueModificationToRemote()
 				}
 			}));
-	
 		})
-		
 	}
 
 	onunload() {
