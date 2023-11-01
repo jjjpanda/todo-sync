@@ -3,12 +3,11 @@ import { Plugin, Notice } from 'obsidian';
 import ToDoSettings, { DEFAULT_SETTINGS } from 'lib/ToDoSettings';
 import SettingsTab from 'lib/SettingsTab';
 
-import MSAuthServer, {MSLoginEvent} from 'lib/MSAuthServer';
+import {MSLoginEvent} from 'lib/MSAuthServer';
 import TaskSync from './lib/TaskSync'
 
 export default class ToDoPlugin extends Plugin {
 	settings: ToDoSettings;
-	private server: MSAuthServer;
 	private taskSync: TaskSync
 
 	async onload() {
@@ -20,16 +19,16 @@ export default class ToDoPlugin extends Plugin {
 			return
 		}
 
-		this.server = new MSAuthServer(this.settings)
-		this.server.start()
+		this.taskSync = new TaskSync(this.app, this.settings)
+		this.taskSync.server.start()
 
 		try{
-			const callbackUrl = await this.server.signIn()
+			const callbackUrl = await this.taskSync.server.signIn()
 
 			this.app.workspace.onLayoutReady(() => {
 				const popup = window.open(callbackUrl, "_blank")
 				if(popup){
-					this.server.setPopUpInstance(popup)
+					this.taskSync.server.setPopUpInstance(popup)
 				}
 				else{
 					console.log("popup is", popup, "| wasn't given to server")
@@ -44,11 +43,8 @@ export default class ToDoPlugin extends Plugin {
 		const statusBarNameFromMS = this.addStatusBarItem();
 		statusBarNameFromMS.setText("Loading...")
 
-		this.taskSync = new TaskSync(this.app, this.settings.TASK_FOLDER)
-		await this.taskSync.syncCards()
-
 		this.registerDomEvent(document, "change", async (evt: MSLoginEvent) => {
-			const session = this.server.getSession()
+			const session = this.taskSync.server.getSession()
 			console.log("MICROSOFT LOGIN EVENT", session, evt)
 
 			if(!session.loggedIn){
@@ -56,15 +52,16 @@ export default class ToDoPlugin extends Plugin {
 				return
 			}
 
-			const user = this.server.getUsers(session.userId)
+			const user = this.taskSync.server.getUsers(session.userId)
 			statusBarNameFromMS.setText(user.displayName);
 
-			this.taskSync.initialResolution()
+			await this.taskSync.syncCards()
+			await this.taskSync.initialResolution()
 
 			this.registerInterval(
 				window.setInterval(
 					async () => {
-						this.taskSync.periodicResolution(this.app, this.taskSync.taskManager, this.server)
+						await this.taskSync.periodicResolution(this.app, this.taskSync.taskManager, this.server)
 					}, 
 					Number(this.settings.SYNC_RATE)
 				)
@@ -97,7 +94,7 @@ export default class ToDoPlugin extends Plugin {
 	}
 
 	onunload() {
-		this.server.stop();
+		this.taskSync.server.stop();
 	}
 
 	async loadSettings() {

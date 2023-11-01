@@ -4,7 +4,6 @@ import { Notice } from 'obsidian';
 import  ToDoSettings from './ToDoSettings';
 import GraphClient from "./graphClient"
 import {ConfidentialClientApplication, LogLevel} from "@azure/msal-node"
-import MSLoginEvent from "./MSLoginEvent"
 
 export default class MSAuthServer {
 	private _app: express.Application;
