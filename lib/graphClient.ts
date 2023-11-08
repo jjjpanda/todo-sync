@@ -1,12 +1,15 @@
 import {Client} from "@microsoft/microsoft-graph-client"
+import Logger from "./logger"
 
+const logger = new Logger("GraphClient");
 export default class GraphClient {
   client;
 
   constructor(msalClient, userId, settings) {
     if (!msalClient || !userId) {
       throw new Error(
-        `Invalid MSAL state. Client: ${msalClient ? 'present' : 'missing'}, User ID: ${userId ? 'present' : 'missing'}`);
+        `Invalid MSAL state. Client: ${msalClient ? 'present' : 'missing'}, User ID: ${userId ? 'present' : 'missing'}`
+      );
     }
   
     // Initialize Graph client
@@ -36,7 +39,7 @@ export default class GraphClient {
             done(null, response.accessToken);
           }
         } catch (err) {
-          console.log(JSON.stringify(err, Object.getOwnPropertyNames(err)));
+          logger.log(JSON.stringify(err, Object.getOwnPropertyNames(err)));
           done(err, null);
         }
       }

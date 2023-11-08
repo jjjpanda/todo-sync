@@ -5,39 +5,41 @@ import SettingsTab from 'lib/SettingsTab';
 
 import {MSLoginEvent} from 'lib/MSAuthServer';
 import TaskSync from './lib/TaskSync'
-
+import TaskOpenerModal from "./lib/TaskOpenerModal"
+import Logger from "./lib/logger"
+const logger: Logger = new Logger("Plugin");
 export default class ToDoPlugin extends Plugin {
 	settings: ToDoSettings;
 	private taskSync: TaskSync
+	
 
 	async onload() {
 		await this.loadSettings();
-
 		this.addSettingTab(new SettingsTab(this.app, this));
-		if(!this.settings.OAUTH_CLIENT_SECRET || !this.settings.OAUTH_CLIENT_ID){
-			new Notice("no client secret/id")
-			return
-		}
 
-		this.taskSync = new TaskSync(this.app, this.settings)
+		this.taskSync = new TaskSync(this.app, this.settings);
+		await this.taskSync.syncCards()
 		this.taskSync.server.start()
 
+		const taskFileSelector = this.addRibbonIcon(
+			'checkmark', 
+			'Task Files', 
+			(evt: MouseEvent) => {	
+				new TaskOpenerModal(
+					this.app, 
+					this.taskSync.getCards()
+				).open()
+			}
+		);
+		
 		try{
 			const callbackUrl = await this.taskSync.server.signIn()
 
 			this.app.workspace.onLayoutReady(() => {
-				const popup = window.open(callbackUrl, "_blank")
-				if(popup){
-					this.taskSync.server.setPopUpInstance(popup)
-				}
-				else{
-					console.log("popup is", popup, "| wasn't given to server")
-				}
+				window.open(callbackUrl, "_blank")
 			})
 		} catch(error){
-			console.error(error)
-			new Notice("error with logging in")
-			return
+			this.throwErrorAndQuit(new Error("sign in failed"), "error with logging in")
 		}
 
 		const statusBarNameFromMS = this.addStatusBarItem();
@@ -45,17 +47,15 @@ export default class ToDoPlugin extends Plugin {
 
 		this.registerDomEvent(document, "change", async (evt: MSLoginEvent) => {
 			const session = this.taskSync.server.getSession()
-			console.log("MICROSOFT LOGIN EVENT", session, evt)
+			logger.log("MICROSOFT LOGIN EVENT", session, evt)
 
 			if(!session.loggedIn){
-				new Notice("error with logging in")
-				return
+				this.throwErrorAndQuit(new Error("not logged in"), "error with logging in")
 			}
 
 			const user = this.taskSync.server.getUsers(session.userId)
 			statusBarNameFromMS.setText(user.displayName);
 
-			await this.taskSync.syncCards()
 			await this.taskSync.initialResolution()
 
 			this.registerInterval(
@@ -68,17 +68,17 @@ export default class ToDoPlugin extends Plugin {
 			)
 
 			this.registerEvent(this.app.vault.on('create', async (file) => {
-				console.log('created', file)
+				logger.log('created', file)
 				this.taskSync.queueAdditionToRemote()
 				await this.taskSync.syncCards()
 			}))
 			this.registerEvent(this.app.vault.on('rename', async (file, oldPath) => {
-				console.log('renamed', file, "from", oldPath)
+				logger.log('renamed', file, "from", oldPath)
 				this.taskSync.queueModificationToRemote()
 				await this.taskSync.syncCards()
 			}))
 			this.registerEvent(this.app.vault.on('delete', async (file) => {
-				console.log('deleted', file)
+				logger.log('deleted', file)
 				this.taskSync.queueDeletionToRemote()
 				await this.taskSync.syncCards()
 			}))
@@ -86,7 +86,7 @@ export default class ToDoPlugin extends Plugin {
 			this.registerEvent(this.app.vault.on('modify', async (file) => {
 				const cardIndex = this.taskSync.taskManager.findKanbanCard(file)
 				if(cardIndex != -1){
-					console.log(file)
+					logger.log(file)
 					this.taskSync.queueModificationToRemote()
 				}
 			}));
@@ -99,6 +99,16 @@ export default class ToDoPlugin extends Plugin {
 
 	async loadSettings() {
 		this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData());
+		logger.log("loaded settings", this.settings)
+		if(!this.settings.OAUTH_CLIENT_SECRET || !this.settings.OAUTH_CLIENT_ID){
+			this.throwErrorAndQuit(new Error("settings invalid"), "no client secret/id")
+		}
+	}
+
+	throwErrorAndQuit(error: Error, msg: string){
+		new Notice(msg)
+		logger.error(error)
+		throw error
 	}
 
 	async saveSettings() {

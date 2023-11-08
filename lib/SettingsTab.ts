@@ -1,5 +1,8 @@
 import { App, PluginSettingTab, Setting } from 'obsidian';
 import ToDoPlugin from 'main';
+import Logger from "./logger";
+
+const logger = new Logger("SettingsTab")
 
 export default class SettingsTab extends PluginSettingTab {
 	plugin: ToDoPlugin;

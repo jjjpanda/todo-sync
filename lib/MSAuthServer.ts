@@ -1,10 +1,12 @@
 import express from 'express';
 import { Server } from 'http';
 import { Notice } from 'obsidian';
-import  ToDoSettings from './ToDoSettings';
+import ToDoSettings from './ToDoSettings';
 import GraphClient from "./graphClient"
 import {ConfidentialClientApplication, LogLevel} from "@azure/msal-node"
+import Logger from "./logger"
 
+const logger = new Logger("MSAuthServer")
 export default class MSAuthServer {
 	private _app: express.Application;
 	private _port = 3000;
@@ -13,7 +15,6 @@ export default class MSAuthServer {
 	private session: {userId: string, loggedIn: boolean};
 	private msalConfig: {}
 	private graphClient: GraphClient
-	private popupInstance: Window;
 	private msalClient: ConfidentialClientApplication
 	private users: {}
 
@@ -33,7 +34,7 @@ export default class MSAuthServer {
 			system: {
 			  loggerOptions: {
 				loggerCallback: (loglevel, message, containsPii) => {
-				  if (!containsPii) console.log(message);
+				  if (!containsPii) logger.log(message);
 				},
 				piiLoggingEnabled: false,
 				logLevel: LogLevel.Verbose,
@@ -41,11 +42,6 @@ export default class MSAuthServer {
 			}
 		  };
 		this.msalClient = new ConfidentialClientApplication(this.msalConfig)
-	}
-
-	setPopUpInstance(popup: Window){
-		console.log("server now holds popup instance")
-		this.popupInstance = popup;
 	}
 
 	async getTasks () {
@@ -96,9 +92,6 @@ export default class MSAuthServer {
 
 	start() {
 		this._app.get('/', async (req, res) => {
-			if(this.popupInstance){
-				this.popupInstance.close()
-			}
 			res.send(`
 			<body>
 				Please close this webpage
@@ -108,7 +101,7 @@ export default class MSAuthServer {
 		});
 
 		this._app.use('/auth/callback', async (req, res) => {
-			console.log("ENTERING CALLBACK POST MS LOGIN")
+			logger.log("ENTERING CALLBACK POST MS LOGIN")
 			const scopes = this._settings.OAUTH_SCOPES || 'https://graph.microsoft.com/.default';
 			const tokenRequest = {
 				code: req.query.code,
@@ -138,14 +131,14 @@ export default class MSAuthServer {
 				};
 				document.dispatchEvent(new MSLoginEvent("change"))
 			} catch(error) {
-				console.error(JSON.stringify(error, Object.getOwnPropertyNames(error)), error)
+				logger.error(JSON.stringify(error, Object.getOwnPropertyNames(error)), error)
 			}
 		
 			res.redirect("/");
 		});
 
 		this._app.use("/auth/signout", async (req, res) => {
-			console.log("ENTERING SIGN OUT MS FLOW")
+			logger.log("ENTERING SIGN OUT MS FLOW")
 			// Sign out
 			if (this.session.userId) {
 			  // Look up the user's account in the cache
@@ -170,7 +163,7 @@ export default class MSAuthServer {
 		this._server = this._app
 			.listen(this._port, '127.0.0.1', () => {
 				// tslint:disable-next-line:no-console
-				console.log(`server started at http://localhost:${this._port}`);
+				logger.log(`server started at http://localhost:${this._port}`);
 			})
 			.on('error', err => {
 				new Notice(`Port ${this._port} already used!`);
@@ -179,7 +172,7 @@ export default class MSAuthServer {
 
 	stop() {
 		this._server.close();
-		console.log(`server stopped`);
+		logger.log(`server stopped`);
 	}
 }
 

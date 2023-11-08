@@ -2,6 +2,9 @@ import Task from "./Task"
 import TaskList from "./TaskList";
 import { App, FileSystemAdapter, TFile } from 'obsidian';
 import path from 'path';
+import Logger from "./logger";    
+
+const logger: Logger = new Logger("ObsidianUtils")
 
 export default class ObsidianUtils {
 	private app: App;
