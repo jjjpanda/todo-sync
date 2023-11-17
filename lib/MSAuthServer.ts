@@ -1,10 +1,10 @@
 import express from 'express';
 import { Server } from 'http';
-import { Notice } from 'obsidian';
 import ToDoSettings from './ToDoSettings';
 import GraphClient from "./graphClient"
 import {ConfidentialClientApplication, LogLevel} from "@azure/msal-node"
 import Logger from "./logger"
+import { Workspace } from 'obsidian';
 
 const logger = new Logger("MSAuthServer")
 export default class MSAuthServer {
@@ -34,7 +34,7 @@ export default class MSAuthServer {
 			system: {
 			  loggerOptions: {
 				loggerCallback: (loglevel, message, containsPii) => {
-				  if (!containsPii) logger.log(message);
+				  if (!containsPii) logger.debug(loglevel, message);
 				},
 				piiLoggingEnabled: false,
 				logLevel: LogLevel.Verbose,
@@ -42,6 +42,15 @@ export default class MSAuthServer {
 			}
 		  };
 		this.msalClient = new ConfidentialClientApplication(this.msalConfig)
+	}
+
+	getGraphClient(){
+		if(this.session.loggedIn){
+			return this.graphClient
+		}
+		else{
+			return null
+		}
 	}
 
 	async getTasks () {
@@ -58,7 +67,7 @@ export default class MSAuthServer {
 
 	async addTaskItems (id){
 		if(this.session.loggedIn){
-			return await this.graphClient.upsertUserTaskListItems(id)
+			// return await this.graphClient.upsertUserTaskListItems(id)
 		}
 	}
 
@@ -74,7 +83,7 @@ export default class MSAuthServer {
 		return this.users[id]
 	}
 
-	async signIn() {
+	async signIn(workspace: Workspace) {
 		const scopes = this._settings.OAUTH_SCOPES || 'https://graph.microsoft.com/.default';
 		const urlParameters = {
 			scopes: scopes.split(','),
@@ -82,10 +91,16 @@ export default class MSAuthServer {
 		};
 
 		try {
+			logger.log("trying to get microsoft callback url")
 			const authUrl = await this.msalClient.getAuthCodeUrl(urlParameters);
-			return authUrl
+		
+			workspace.onLayoutReady(() => {
+				logger.log("opening microsoft login screen")
+				window.open(authUrl, "_blank")
+			})
 		}
 		catch (error) {
+			logger.log("failed to get microsoft callback url and sign in")
 			throw error
     	}
 	}
@@ -93,10 +108,10 @@ export default class MSAuthServer {
 	start() {
 		this._app.get('/', async (req, res) => {
 			res.send(`
-			<body>
-				Please close this webpage
-				<script>document.addEventListener("onunload", () => window.open("obsidian://open", "_blank"))</script>
-			</body>
+				<body>
+					Please close this webpage
+					<script>document.addEventListener("onunload", () => window.open("obsidian://open", "_blank"))</script>
+				</body>
 			`);
 		});
 
@@ -160,14 +175,18 @@ export default class MSAuthServer {
 			this.session = {userId: "", loggedIn: false}
 		})
 
-		this._server = this._app
-			.listen(this._port, '127.0.0.1', () => {
-				// tslint:disable-next-line:no-console
-				logger.log(`server started at http://localhost:${this._port}`);
-			})
-			.on('error', err => {
-				new Notice(`Port ${this._port} already used!`);
-			});
+		return new Promise<void>((resolve, reject) => {
+			this._server = this._app
+				.listen(this._port, '127.0.0.1', () => {
+					logger.log(`server started at http://localhost:${this._port}`);
+					resolve()
+				})
+				.on('error', err => {
+					logger.error(`Port ${this._port} already used!`)
+					reject()
+				});
+		})
+		
 	}
 
 	stop() {

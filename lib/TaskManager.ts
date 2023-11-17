@@ -1,14 +1,15 @@
 
 import Logger from "./logger"
+import ObsidianUtils from "./obsidianUtils";
 const logger = new Logger("TaskManager")
 export default class TaskManager {
-    folder;
-    app;
+    folder: string;
+    obsidianUtils: ObsidianUtils;
 	kanbanCards;
     
 
-    constructor(app, folder){
-        this.app = app;
+    constructor(obsidianUtils, folder){
+        this.obsidianUtils = obsidianUtils;
         this.folder = folder;
     }
 
@@ -23,20 +24,19 @@ export default class TaskManager {
         logger.log("syncing cards from", this.folder)
         let tag = 'kanban_card';
 
-        // Get the Vault instance
-        let vault = this.app.vault;
-
         // Get all markdown files in the vault
-        let markdownFiles = vault.getMarkdownFiles();
+        let markdownFiles = this.obsidianUtils.getFiles();
+        logger.debug("all files", markdownFiles)
 
         // Filter files based on the folder
         let filesInFolder = markdownFiles.filter(file => {
-            let filePath = vault.getAbstractFileByPath(file.path);
+            let filePath = this.obsidianUtils.getAbstractFileByPath(file.path);
             return filePath && filePath.parent && filePath.parent.path.includes(this.folder);
         });
+        logger.debug("found files", filesInFolder)
 
         // Read all files and filter based on the tag
-        const kanbanCardsUnfiltered = await Promise.all(filesInFolder.map(file => vault.read(file).then(content => {
+        const kanbanCardsUnfiltered = await Promise.all(filesInFolder.map(file => this.obsidianUtils.getFile(file).then(content => {
             // Parse YAML frontmatter
             let contentSplit = content.split('---');
             let frontMatter = contentSplit[1];
@@ -51,7 +51,7 @@ export default class TaskManager {
         })))
 
         this.kanbanCards = kanbanCardsUnfiltered.filter(file => !!file)
-        logger.log("updated kanban cards file list", this.kanbanCards)
+        logger.log("kanban cards file list", this.kanbanCards)
     }
 
 }

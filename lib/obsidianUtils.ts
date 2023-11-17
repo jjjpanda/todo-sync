@@ -1,6 +1,6 @@
-import Task from "./Task"
-import TaskList from "./TaskList";
-import { App, FileSystemAdapter, TFile } from 'obsidian';
+import Task from "./model/Task"
+import TaskList from "./model/TaskList";
+import { App, FileSystemAdapter, TFile, TAbstractFile } from 'obsidian';
 import path from 'path';
 import Logger from "./logger";    
 
@@ -31,6 +31,14 @@ export default class ObsidianUtils {
 
 	async getFile(file: TFile): Promise<string> {
 		return await this.app.vault.read(file)
+	}
+
+	getFiles(): TFile[] {
+		return this.app.vault.getMarkdownFiles()
+	}
+
+	getAbstractFileByPath(path: string) : TAbstractFile | null {
+		return this.app.vault.getAbstractFileByPath(path)
 	}
 
 	label(card: TFile): string {

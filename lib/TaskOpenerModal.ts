@@ -1,22 +1,21 @@
 import { FuzzySuggestModal, TFile } from 'obsidian';
 import Logger from "./logger"
+import TaskSync from './TaskSync';
 const logger = new Logger("TaskOpenerModal")
 export default class TaskOpenerModal extends FuzzySuggestModal<TFile> {
-    files: TFile[];
+    taskSync: TaskSync;
     
-
-    constructor(app, kanbanCards) {
+    constructor(app, taskSync) {
         super(app);
-        this.files = app.vault.getMarkdownFiles();
+        this.taskSync = taskSync;
     }
 
     getItems() {
-        return this.files;
-        
+        return this.taskSync.getCards();
     }
 
     getItemText(item) {
-        return item.basename;
+        return `${item.parent.name} > ${item.basename}`;
     }
 
     onChooseItem(item, evt) {

@@ -1,9 +1,13 @@
-import TaskList from "./TaskList"
+import TaskList from "./model/TaskList"
 import Logger from "./logger";
-const logger = new Logger("TaskDelta")
-export default class TaskDelta {
+import TaskDelta from "./model/TaskDelta";
+const logger = new Logger("TaskDeltaResolver")
 
-    static getTaskDelta (origin, remote) {
+export default class TaskDeltaResolver {
+
+    static getTaskDeltas (origin: TaskList[], remote: TaskList[]): TaskDelta {
+        const delta: TaskDelta = {toOrigin: {}, toRemote: {}}
+
         const deltaMissingFromRemote = []
         
         for(const taskList of origin){
@@ -37,6 +41,7 @@ export default class TaskDelta {
             }
         }
 
-        return deltaMissingFromRemote
+        return delta
+        
     }
 }

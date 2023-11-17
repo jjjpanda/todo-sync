@@ -1,23 +1,23 @@
 export default class Logger{
-    prefix
+    prefix: string
 
     constructor(prefix: string){
-        this.prefix = prefix
+        this.prefix = `ToDoSync | ${prefix} |`
     }
 
-    debug(...args){
+    debug(...args: any[]){
         console.debug(this.prefix, ...args)
     }
 
-    log(...args){
+    log(...args: any[]){
         console.log(this.prefix, ...args)
     }
 
-    warn(...args){
+    warn(...args: any[]){
         console.warn(this.prefix, ...args)
     }
 
-    error(...args){
+    error(...args: any[]){
         console.error(this.prefix, ...args)
     }
 }

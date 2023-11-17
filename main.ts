@@ -7,47 +7,61 @@ import {MSLoginEvent} from 'lib/MSAuthServer';
 import TaskSync from './lib/TaskSync'
 import TaskOpenerModal from "./lib/TaskOpenerModal"
 import Logger from "./lib/logger"
-const logger: Logger = new Logger("Plugin");
+const logger: Logger = new Logger("PluginClass");
 export default class ToDoPlugin extends Plugin {
 	settings: ToDoSettings;
+	taskFileSelector: HTMLElement;
 	private taskSync: TaskSync
-	
 
 	async onload() {
 		await this.loadSettings();
 		this.addSettingTab(new SettingsTab(this.app, this));
 
 		this.taskSync = new TaskSync(this.app, this.settings);
-		await this.taskSync.syncCards()
-		this.taskSync.server.start()
-
-		const taskFileSelector = this.addRibbonIcon(
-			'checkmark', 
-			'Task Files', 
-			(evt: MouseEvent) => {	
-				new TaskOpenerModal(
-					this.app, 
-					this.taskSync.getCards()
-				).open()
-			}
-		);
 		
 		try{
-			const callbackUrl = await this.taskSync.server.signIn()
-
-			this.app.workspace.onLayoutReady(() => {
-				window.open(callbackUrl, "_blank")
-			})
+			await this.taskSync.server.start()
+		} catch (err){
+			this.throwErrorAndQuit(new Error(err), `Server didn't start`)
+		}		
+		
+		const statusBarNameFromMS = this.addStatusBarItem();
+		statusBarNameFromMS.setText("Loading...")
+		
+		try{
+			await this.taskSync.server.signIn(this.app.workspace)
 		} catch(error){
 			this.throwErrorAndQuit(new Error("sign in failed"), "error with logging in")
 		}
 
-		const statusBarNameFromMS = this.addStatusBarItem();
-		statusBarNameFromMS.setText("Loading...")
+		this.app.workspace.onLayoutReady(async () => {
+			await this.taskSync.syncCards()
+			
+			this.taskFileSelector = this.addRibbonIcon(
+				'checkmark', 
+				'Task Files', 
+				(evt: MouseEvent) => {	
+					new TaskOpenerModal(
+						this.app, 
+						this.taskSync
+					).open()
+				}
+			);
 
+			this.addCommand({
+				id: 'reorder-tasks-on-page',
+				name: 'Reorder Tasks',
+				callback: () => {
+					
+					new Notice("REORDER")
+				}
+			});
+		})
+
+		
 		this.registerDomEvent(document, "change", async (evt: MSLoginEvent) => {
 			const session = this.taskSync.server.getSession()
-			logger.log("MICROSOFT LOGIN EVENT", session, evt)
+			logger.log("login event", session, evt)
 
 			if(!session.loggedIn){
 				this.throwErrorAndQuit(new Error("not logged in"), "error with logging in")
@@ -56,40 +70,52 @@ export default class ToDoPlugin extends Plugin {
 			const user = this.taskSync.server.getUsers(session.userId)
 			statusBarNameFromMS.setText(user.displayName);
 
-			await this.taskSync.initialResolution()
+			const graphClient = this.taskSync.server.getGraphClient();
+			if(!graphClient){
+				this.throwErrorAndQuit(new Error("no graph client available"), "no graph client to get microsoft to-do list")
+			}
+			this.taskSync.setGraphClient(graphClient);
 
-			this.registerInterval(
-				window.setInterval(
-					async () => {
-						await this.taskSync.periodicResolution(this.app, this.taskSync.taskManager, this.server)
-					}, 
-					Number(this.settings.SYNC_RATE)
+			this.app.workspace.onLayoutReady(async () => {
+				
+				await this.taskSync.initialResolution()
+
+				//COMMENTS FROM HERE
+				this.registerInterval(
+					window.setInterval(
+						async () => {
+							await this.taskSync.periodicResolution()
+						}, 
+						Number(this.settings.SYNC_RATE)
+					)
 				)
-			)
 
-			this.registerEvent(this.app.vault.on('create', async (file) => {
-				logger.log('created', file)
-				this.taskSync.queueAdditionToRemote()
-				await this.taskSync.syncCards()
-			}))
-			this.registerEvent(this.app.vault.on('rename', async (file, oldPath) => {
-				logger.log('renamed', file, "from", oldPath)
-				this.taskSync.queueModificationToRemote()
-				await this.taskSync.syncCards()
-			}))
-			this.registerEvent(this.app.vault.on('delete', async (file) => {
-				logger.log('deleted', file)
-				this.taskSync.queueDeletionToRemote()
-				await this.taskSync.syncCards()
-			}))
-
-			this.registerEvent(this.app.vault.on('modify', async (file) => {
-				const cardIndex = this.taskSync.taskManager.findKanbanCard(file)
-				if(cardIndex != -1){
-					logger.log(file)
+				this.registerEvent(this.app.vault.on('create', async (file) => {
+					logger.log('created', file)
+					this.taskSync.queueAdditionToRemote()
+					await this.taskSync.syncCards()
+				}))
+				this.registerEvent(this.app.vault.on('rename', async (file, oldPath) => {
+					logger.log('renamed', file, "from", oldPath)
 					this.taskSync.queueModificationToRemote()
-				}
-			}));
+					await this.taskSync.syncCards()
+				}))
+				this.registerEvent(this.app.vault.on('delete', async (file) => {
+					logger.log('deleted', file)
+					this.taskSync.queueDeletionToRemote()
+					await this.taskSync.syncCards()
+				}))
+
+				this.registerEvent(this.app.vault.on('modify', async (file) => {
+					const cardIndex = this.taskSync.taskManager.findKanbanCard(file)
+					if(cardIndex != -1){
+						logger.log(file)
+						this.taskSync.queueModificationToRemote()
+					}
+				}));
+				
+			})
+			
 		})
 	}
 
