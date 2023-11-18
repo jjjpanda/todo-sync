@@ -12,7 +12,7 @@ export default class ToDoPlugin extends Plugin {
 	settings: ToDoSettings;
 	taskFileSelector: HTMLElement;
 	private taskSync: TaskSync
-
+	
 	async onload() {
 		await this.loadSettings();
 		this.addSettingTab(new SettingsTab(this.app, this));

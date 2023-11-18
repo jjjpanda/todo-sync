@@ -43,7 +43,7 @@ export default class ToDoManager {
             taskList.addTasks(taskItems.value.map(item => {
                 const modifiedTime = moment(item.lastModifiedDateTime)
                 const modifiedTimeUnix = modifiedTime ? modifiedTime.valueOf() : 0
-                const task = new Task(item, modifiedTimeUnix)
+                const task = new Task(taskList, item, modifiedTimeUnix)
                 task.id = item.id
                 return task
             }))

@@ -2,21 +2,23 @@ import Task from "./Task"
 import Logger from "../logger";
 const logger = new Logger("TaskList")
 export default class TaskList{
-    name;
-    tasks;
-    id;
+    name: string;
+    tasks: Task[];
+    id: string;
     
     
-    constructor(name){
+    constructor(name: string){
         this.name = name;
         this.tasks = []
     }
 
-    addTask(task){
+    addTask(task: Task){
         this.tasks.push(task)
     }
 
-    addTasks(tasks){
+    addTasks(tasks: Task[]){
         this.tasks = this.tasks.concat(tasks)
     }
+
+    
 }

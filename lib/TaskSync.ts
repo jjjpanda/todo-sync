@@ -40,8 +40,9 @@ export default class TaskSync {
         const todoLists = await this.toDoManager.getToDoTasks() ?? []
         logger.debug("todo lists", todoLists)
 
-        const {toOrigin, toRemote} = TaskDeltaResolver.getTaskDeltas(taskLists, todoLists)
-        logger.log("missing from cloud", toRemote, "missing from local", toOrigin)
+        const taskListDelta = TaskDeltaResolver.getTaskListDeltas(taskLists, todoLists)
+        const taskDelta = TaskDeltaResolver.getTaskDeltas(taskLists, todoLists)
+        logger.log("deltas", taskListDelta, taskDelta)
 
     }
 

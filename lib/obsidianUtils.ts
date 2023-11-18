@@ -55,7 +55,7 @@ export default class ObsidianUtils {
                 content
                     .split("\n")
                     .filter(line => Task.isLineATask(line) != null)
-                    .map(taskLine => new Task(taskLine, files[index].stat.mtime ?? 0))
+                    .map(taskLine => new Task(taskLists[indexOfNamedTaskList], taskLine, files[index].stat.mtime ?? 0))
             )
         })
         
