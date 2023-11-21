@@ -37,16 +37,24 @@ export default class ToDoManager {
         logger.debug("tasks in to-do", taskSetsExpanded)
 
         const contextualizedTaskSets = taskSetsExpanded.map((taskItems, index) => {
-            const taskList = new TaskList(taskSets[index].wellknownListName === "defaultList" ? "__Other" : taskSets[index].displayName)
+            const taskList = new TaskList(
+                taskSets[index].wellknownListName === "defaultList" ? "__Other" : taskSets[index].displayName,
+                taskSets[index].lastModifiedDateTime
+            )
             taskList.id = taskSets[index].id
+
+            let overallModificationTime = 0
             
             taskList.addTasks(taskItems.value.map(item => {
                 const modifiedTime = moment(item.lastModifiedDateTime)
                 const modifiedTimeUnix = modifiedTime ? modifiedTime.valueOf() : 0
+                overallModificationTime = Math.max(overallModificationTime, modifiedTimeUnix)
                 const task = new Task(taskList, item, modifiedTimeUnix)
                 task.id = item.id
                 return task
             }))
+
+            taskList.modifiedTime = overallModificationTime
             return taskList
         })
 

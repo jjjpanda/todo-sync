@@ -1,6 +1,6 @@
 
 import ToDoManager from "./ToDoManager"
-import TaskDeltaResolver from "./TaskDeltaResolver"
+import DeltaResolver from "./DeltaResolver"
 import ObsidianUtils from "./obsidianUtils";
 import TaskManager from "./TaskManager";
 import MSAuthServer from "./MSAuthServer";
@@ -40,9 +40,16 @@ export default class TaskSync {
         const todoLists = await this.toDoManager.getToDoTasks() ?? []
         logger.debug("todo lists", todoLists)
 
-        const taskListDelta = TaskDeltaResolver.getTaskListDeltas(taskLists, todoLists)
-        const taskDelta = TaskDeltaResolver.getTaskDeltas(taskLists, todoLists)
-        logger.log("deltas", taskListDelta, taskDelta)
+        const taskListDelta = DeltaResolver.getTaskListDeltas(
+            taskLists, 
+            todoLists
+        )
+        logger.log("tasklist delta", taskListDelta)
+        const taskDelta = DeltaResolver.getTaskDeltas(
+            taskLists.map(list => list.tasks).flat(), 
+            todoLists.map(list => list.tasks).flat()
+        )
+        logger.log("task delta", taskDelta)
 
     }
 

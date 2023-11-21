@@ -1,22 +1,33 @@
 import DateTimeUtils from "../DateTimeUtils"
 import Logger from "../logger";
 import TaskList from "./TaskList";
+import Comparable from "./Comparable"
+import ToDoTask from "./ToDoTask";
 
 const logger = new Logger("Task")
-export default class Task{
-    title: string;
-    status: string;
-    dueDate;
-    dueTime;
-    priority;
-    modifiedTime;
-    id: string;
+export default class Task implements Comparable{
+    title = "";
+    status = "";
+    dueDate = "";
+    dueTime = "";
+    priority = "";
+    modifiedTime = 0;
+    id = "";
     parent: TaskList
 
-    constructor(parent, taskStringOrObject, mtime){
+    constructor(parent: TaskList, taskStringOrObject: (string | ToDoTask | null), mtime: number){
         this.modifiedTime = mtime
         this.parent = parent
-        if(typeof taskStringOrObject === "string"){
+        if(!taskStringOrObject){
+            this.title = "";
+            this.status = "";
+            this.dueDate = "";
+            this.dueTime = "";
+            this.priority = "";
+            this.id = ""
+            return
+        }
+        else if(typeof taskStringOrObject === "string"){
             this.setTaskPropertiesWithString(taskStringOrObject)
         }
         else{
@@ -25,16 +36,16 @@ export default class Task{
     }
 
     setTaskPropertiesWithString(taskString: string){
-        const {status, text} = Task.isLineATask(taskString);
+        const {status, text} = Task.lineToTask(taskString);
         const obj = Task.parseTextToObject(text)
         this.status = status;
         this.title = obj.title
-        this.dueDate = obj.due
-        this.dueTime = obj.time ? DateTimeUtils.extractTimeFromString(obj.time) : (obj.due ? DateTimeUtils.MIDNIGHT : undefined)
-        this.priority = obj.priority
+        this.dueDate = obj.due ?? ""
+        this.dueTime = obj.time ? DateTimeUtils.extractTimeFromString(obj.time) : (obj.due ? DateTimeUtils.MIDNIGHT : "")
+        this.priority = obj.priority ?? ""
     }
 
-    setTaskPropertiesWithObject(taskObject: {}){
+    setTaskPropertiesWithObject(taskObject: ToDoTask){
         this.title = taskObject.title
         switch(taskObject.status){
             case "notStarted":
@@ -78,12 +89,12 @@ export default class Task{
         this.dueTime = time
     }
     
-    static parseDateTime(dateTime){
+    static parseDateTime(dateTime: string){
         const splitDateTime =  dateTime.replace("Z", "").split("T")
         return {date: splitDateTime[0], time: splitDateTime[1]}
     }
 
-    static isLineATask(line){
+    static isLineATask(line: string){
         const match = /-\s\[(\s|\/|x|B|!)\] (.*)/.exec(line)
         if(match){
             return {
@@ -96,9 +107,17 @@ export default class Task{
         }
     }
 
-    static metatagExtractor(field, text){
+    static lineToTask(line: string){
+        const match = /-\s\[(\s|\/|x|B|!)\] (.*)/.exec(line)
+        return {
+            status: match ? match[1] : "",
+            text: match ? match[2] : ""
+        }
+    }
+
+    static metatagExtractor(field: string, text: string){
         const regex = `\\[\\s*${field}::\\s*(.*?)\\s*\\]`;
-        const extraction = {}
+        const extraction = {} as {[key: string]: string}
         const match = new RegExp(regex).exec(text);
         if (match) {
           extraction[field] = match[1];
@@ -109,7 +128,7 @@ export default class Task{
         }
     }
 
-    static parseTextToObject(text) {
+    static parseTextToObject(text: string): {title: string, due?: string, time?: string, priority?: string } {
         const due = this.metatagExtractor("due", text) 
         text = text.replace(due.text, "")
 
@@ -129,5 +148,49 @@ export default class Task{
             ...priority.extraction
         };
     }
+
+    equals(task: Task): boolean {
+        const sameId = task.id === this.id
+        if(sameId){
+            return true;
+        }
+        else{
+            return false;
+        }
+    }
+
+    isAnOlderVersionOf(task: Task): boolean{
+        if(this.equals(task)){
+            return this.modifiedTime < task.modifiedTime
+        }
+        else{
+            return false
+        }
+    }
     
+    static from(obj: {
+        title?: string;
+        status?: string;
+        dueDate?: string;
+        dueTime?: string;
+        priority?: string;
+        modifiedTime?: number;
+        id?: string;
+        parent?: TaskList
+    }): Task {
+        let result = new Task(
+            obj.parent ?? TaskList.from({}),
+            null, 
+            obj.modifiedTime ?? 0
+        );
+        result.id = obj.id ?? "";
+
+        result.title = obj.title ?? "";
+        result.status = obj.status ?? "";
+        result.dueDate = obj.dueDate ?? "";
+        result.dueTime = obj.dueTime ?? "";
+        result.priority = obj.priority ?? "";
+
+        return result;
+    }
 }

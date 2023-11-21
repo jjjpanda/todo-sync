@@ -82,4 +82,8 @@ export default class GraphClient {
     return user;
   }
 
+  async test(){
+    const user = await this.client.api("/me/todo/lists").post({id: "hi", displayName: "name"})
+  }
+
 };

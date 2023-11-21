@@ -47,7 +47,11 @@ export default class ObsidianUtils {
 
 	async parseTasks(files: TFile[]){
         const contents = await Promise.all(files.map(card => this.getFile(card)))
-        const taskLists = Array.from(new Set(files.map(card => this.label(card)))).map(name => new TaskList(name))
+        const taskLists = Array.from(
+			new Set(
+				files.map(card => ({name: this.label(card), mtime: card.stat.mtime ?? 0}))
+			)
+		).map(({name, mtime}) => new TaskList(name, mtime))
         contents.forEach((content, index) => {
             const name = this.label(files[index])
             const indexOfNamedTaskList = taskLists.findIndex(list => list.name === name);
