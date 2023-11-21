@@ -1,8 +1,8 @@
-import TaskList from "./model/TaskList"
-import Task from "./model/Task"
+import TaskList from "../model/TaskList"
+import Task from "../model/Task"
 import Logger from "./logger";
-import Delta from "./model/Delta";
-import Comparable from "./model/Comparable"
+import Delta from "../model/Delta";
+import Comparable from "../model/Comparable"
 const logger = new Logger("DeltaResolver")
 
 export default class DeltaResolver {
@@ -53,7 +53,7 @@ export default class DeltaResolver {
         const delta: Delta<TaskList> = knownDelta
         let {origin, remote} = DeltaResolver.filterByKnownDelta<TaskList>(_origin, _remote, knownDelta);
 
-        logger.debug(origin, remote)
+        let resolved = [] as Task[]
 
         origin.forEach(tasklist => {
             if(!tasklist.id){
@@ -71,14 +71,19 @@ export default class DeltaResolver {
                         //origin is behind
                         delta.toOrigin.modify.push(remote[tasklistInRemoteIndex])
                     }
-                    else{ 
+                    else if(remote[tasklistInRemoteIndex].isAnOlderVersionOf(tasklist)){ 
                         //remote is behind
                         delta.toRemote.modify.push(tasklist)
+                    }
+                    else{
+                        resolved.push(tasklist)
                     }
                     remote.splice(tasklistInRemoteIndex, 1); //mutable removal of remote task
                 }
             }
         })
+        
+        logger.debug("resolved tasklists", resolved)
         
         remote.forEach(taskList => {
             if(taskList.name !== "__Other"){
@@ -94,6 +99,8 @@ export default class DeltaResolver {
         const delta: Delta<Task> = knownDelta
         let {origin, remote} = DeltaResolver.filterByKnownDelta<Task>(_origin, _remote, knownDelta);
         
+        let resolved = [] as Task[]
+
         origin = origin.filter(task => {
             if(!task.id){
                 //not in remote
@@ -112,15 +119,21 @@ export default class DeltaResolver {
                         //origin is behind
                         delta.toOrigin.modify.push(remote[taskInRemoteIndex])
                     }
-                    else{ 
+                    else if(remote[taskInRemoteIndex].isAnOlderVersionOf(task)){ 
                         //remote is behind
                         delta.toRemote.modify.push(task)
+                    }
+                    else{
+                        resolved.push(task)
+                        //no change
                     }
                     remote.splice(taskInRemoteIndex, 1); //mutable removal of remote task
                     return false;
                 }
             }
         })
+
+        logger.debug("resolved tasks", resolved)
 
         remote.forEach(task => {
             if(task.parent.name !== "__Other"){
@@ -130,38 +143,5 @@ export default class DeltaResolver {
 
         return delta        
     }
-
-    // const deltaMissingFromRemote = []
-        
-    // for(const taskList of origin){
-    //     if(taskList.name === "__Other"){
-    //         continue;
-    //     }
-
-    //     const matchingRemoteObject = remote.find(remoteTaskList => remoteTaskList.name === taskList.name)
-
-    //     if(!matchingRemoteObject){
-    //         deltaMissingFromRemote.push(taskList)
-    //     }
-    //     else{
-    //         const deltaTaskList = new TaskList(matchingRemoteObject.name)
-    //         deltaTaskList.id = matchingRemoteObject.id
-    //         for(const task of taskList.tasks){
-    //             const matchingRemoteTask = matchingRemoteObject.tasks.find(remoteTask => remoteTask.title === task.title)
-    //             if(!matchingRemoteTask){
-    //                 deltaTaskList.addTask(task)
-    //             }
-    //             else{
-    //                 if(task.modifiedTime > matchingRemoteTask.modifiedTime){
-    //                     deltaTaskList.addTask(task)
-    //                     deltaTaskList.tasks[deltaTaskList.tasks.length - 1].id = matchingRemoteTask.id
-    //                 }
-    //             }
-    //         }
-    //         if(deltaTaskList.tasks.length > 0){
-    //             deltaMissingFromRemote.push(deltaTaskList)
-    //         }
-    //     }
-    // }
 
 }

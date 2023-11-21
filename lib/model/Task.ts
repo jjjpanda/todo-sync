@@ -1,5 +1,5 @@
-import DateTimeUtils from "../DateTimeUtils"
-import Logger from "../logger";
+import DateTimeUtils from "../util/DateTimeUtils"
+import Logger from "../util/logger";
 import TaskList from "./TaskList";
 import Comparable from "./Comparable"
 import ToDoTask from "./ToDoTask";

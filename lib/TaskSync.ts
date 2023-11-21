@@ -1,11 +1,13 @@
 
 import ToDoManager from "./ToDoManager"
-import DeltaResolver from "./DeltaResolver"
-import ObsidianUtils from "./obsidianUtils";
+import DeltaResolver from "./util/DeltaResolver"
+import ObsidianUtils from "./util/obsidianUtils";
 import TaskManager from "./TaskManager";
 import MSAuthServer from "./MSAuthServer";
-import Logger from "./logger"
-import ToDoSettings from "./ToDoSettings";
+import Logger from "./util/logger"
+import ToDoSettings from "./model/ToDoSettings";
+import GraphClient from "./util/graphClient";
+
 const logger = new Logger("TaskSync")
 export default class TaskSync {
 	obsidianUtils: ObsidianUtils;
@@ -45,6 +47,7 @@ export default class TaskSync {
             todoLists
         )
         logger.log("tasklist delta", taskListDelta)
+        
         const taskDelta = DeltaResolver.getTaskDeltas(
             taskLists.map(list => list.tasks).flat(), 
             todoLists.map(list => list.tasks).flat()

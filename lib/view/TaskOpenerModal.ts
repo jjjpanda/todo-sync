@@ -1,6 +1,6 @@
 import { FuzzySuggestModal, TFile } from 'obsidian';
-import Logger from "./logger"
-import TaskSync from './TaskSync';
+import Logger from "../util/logger"
+import TaskSync from '../TaskSync';
 const logger = new Logger("TaskOpenerModal")
 export default class TaskOpenerModal extends FuzzySuggestModal<TFile> {
     taskSync: TaskSync;

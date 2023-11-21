@@ -1,5 +1,5 @@
 import Task from "./Task"
-import Logger from "../logger";
+import Logger from "../util/logger";
 import Comparable from "./Comparable"
 
 const logger = new Logger("TaskList")
@@ -36,7 +36,7 @@ export default class TaskList implements Comparable{
     }
 
     isAnOlderVersionOf(taskList: TaskList): boolean{
-        if(this.equals(taskList)){
+        if(this.equals(taskList) && this.name !== taskList.name){
             return this.modifiedTime < taskList.modifiedTime
         }
         else{

@@ -1,9 +1,9 @@
 import express from 'express';
 import { Server } from 'http';
-import ToDoSettings from './ToDoSettings';
-import GraphClient from "./graphClient"
+import ToDoSettings from './model/ToDoSettings';
+import GraphClient from "./util/graphClient"
 import {ConfidentialClientApplication, LogLevel} from "@azure/msal-node"
-import Logger from "./logger"
+import Logger from "./util/logger"
 import { Workspace } from 'obsidian';
 
 const logger = new Logger("MSAuthServer")

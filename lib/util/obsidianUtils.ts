@@ -1,5 +1,5 @@
-import Task from "./model/Task"
-import TaskList from "./model/TaskList";
+import Task from "../model/Task"
+import TaskList from "../model/TaskList";
 import { App, FileSystemAdapter, TFile, TAbstractFile } from 'obsidian';
 import path from 'path';
 import Logger from "./logger";    

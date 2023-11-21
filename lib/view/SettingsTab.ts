@@ -1,6 +1,6 @@
 import { App, PluginSettingTab, Setting } from 'obsidian';
 import ToDoPlugin from 'main';
-import Logger from "./logger";
+import Logger from "../util/logger";
 
 const logger = new Logger("SettingsTab")
 

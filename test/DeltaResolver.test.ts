@@ -1,4 +1,4 @@
-import DeltaResolver from "../lib/DeltaResolver"
+import DeltaResolver from "../lib/util/DeltaResolver"
 import TaskList from "../lib/model/TaskList"
 import Task from "../lib/model/Task"
 

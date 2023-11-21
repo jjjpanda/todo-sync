@@ -1,12 +1,12 @@
 import { Plugin, Notice } from 'obsidian';
 
-import ToDoSettings, { DEFAULT_SETTINGS } from 'lib/ToDoSettings';
-import SettingsTab from 'lib/SettingsTab';
+import ToDoSettings, { DEFAULT_SETTINGS } from 'lib/model/ToDoSettings';
+import SettingsTab from 'lib/view/SettingsTab';
 
 import {MSLoginEvent} from 'lib/MSAuthServer';
 import TaskSync from './lib/TaskSync'
-import TaskOpenerModal from "./lib/TaskOpenerModal"
-import Logger from "./lib/logger"
+import TaskOpenerModal from "./lib/view/TaskOpenerModal"
+import Logger from "./lib/util/logger"
 const logger: Logger = new Logger("PluginClass");
 export default class ToDoPlugin extends Plugin {
 	settings: ToDoSettings;

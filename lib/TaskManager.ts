@@ -1,6 +1,6 @@
 
-import Logger from "./logger"
-import ObsidianUtils from "./obsidianUtils";
+import Logger from "./util/logger"
+import ObsidianUtils from "./util/obsidianUtils";
 const logger = new Logger("TaskManager")
 export default class TaskManager {
     folder: string;

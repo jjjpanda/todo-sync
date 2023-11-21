@@ -3,8 +3,8 @@ import Task from "./model/Task"
 
 import moment from "moment"
 const logger = new Logger("ToDoManager")
-import Logger from "./logger"
-import GraphClient from "./graphClient"
+import Logger from "./util/logger"
+import GraphClient from "./util/graphClient"
 export default class ToDoManager {
 
     graphClient: GraphClient | null
