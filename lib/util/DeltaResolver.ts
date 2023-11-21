@@ -53,7 +53,7 @@ export default class DeltaResolver {
         const delta: Delta<TaskList> = knownDelta
         let {origin, remote} = DeltaResolver.filterByKnownDelta<TaskList>(_origin, _remote, knownDelta);
 
-        let resolved = [] as Task[]
+        let resolved = [] as TaskList[]
 
         origin.forEach(tasklist => {
             if(!tasklist.id){
