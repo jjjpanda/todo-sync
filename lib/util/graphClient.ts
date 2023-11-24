@@ -1,11 +1,15 @@
 import {Client} from "@microsoft/microsoft-graph-client"
 import Logger from "./logger"
+import ToDoSettings from "lib/model/ToDoSettings";
+import ToDoTaskList from "lib/model/ToDoTaskList";
+import ToDoTask from "lib/model/ToDoTask";
+import MicrosoftGraphResponse from "lib/model/MicrosoftGraphResponse";
 
 const logger = new Logger("GraphClient");
 export default class GraphClient {
   client;
 
-  constructor(msalClient, userId, settings) {
+  constructor(msalClient, userId, settings: ToDoSettings) {
     if (!msalClient || !userId) {
       throw new Error(
         `Invalid MSAL state. Client: ${msalClient ? 'present' : 'missing'}, User ID: ${userId ? 'present' : 'missing'}`
@@ -54,36 +58,61 @@ export default class GraphClient {
     return user;
   }
 
-  async getUserTasksList() {
-    const user = await this.client
+  async getUserTasksLists(): Promise<MicrosoftGraphResponse<ToDoTaskList[]>> {
+    const lists = await this.client
       .api('/me/todo/lists')
       .get();
-    return user;
+    
+    return lists;
+  }
+
+  async postUserTaskList(taskListObj: ToDoTaskList): Promise<MicrosoftGraphResponse<ToDoTaskList>> {
+    const list = await this.client
+      .api(`/me/todo/lists`)
+      .post(taskListObj);
+    return list;
   }
   
-  async getUserTaskListItems(listId) {
-    const user = await this.client
+  async patchUserTaskList(taskListObj: ToDoTaskList): Promise<MicrosoftGraphResponse<ToDoTaskList>> {
+    const list = await this.client
+      .api(`/me/todo/lists/${taskListObj.id}`)
+      .patch(taskListObj);
+    return list;
+  }
+
+  async deleteUserTaskList(listId: string) {
+    const successful = await this.client
+      .api(`/me/todo/lists/${listId}`)
+      .delete();
+    return successful;
+  }
+  
+  async getUserTaskListItems(listId: string): Promise<MicrosoftGraphResponse<ToDoTask[]>> {
+    const tasks = await this.client
       .api(`/me/todo/lists/${listId}/tasks/`)
       .get();
-    return user;
+    return tasks;
   }
 
-  async postUserTaskList(taskObj) {
-    const user = await this.client
-      .api(`/me/todo/lists`)
+  async postUserTaskListItem(listId: string, taskObj: ToDoTask): Promise<MicrosoftGraphResponse<ToDoTask>> {
+    const task = await this.client
+      .api(`/me/todo/lists/${listId}/tasks`)
       .post(taskObj);
-    return user;
+    return task;
+  }
+  
+  async patchUserTaskListItem(listId: string, taskObj: ToDoTask): Promise<MicrosoftGraphResponse<ToDoTask>> {
+    const task = await this.client
+      .api(`/me/todo/lists/${listId}/tasks/${taskObj.id}`)
+      .patch(taskObj);
+    return task;
   }
 
-  async patchUserTaskList(taskObj) {
-    const user = await this.client
-      .api(`/me/todo/lists`)
-      .post(taskObj);
-    return user;
-  }
-
-  async test(){
-    const user = await this.client.api("/me/todo/lists").post({id: "hi", displayName: "name"})
+  async deleteUserTaskListItem(listId: string, taskId: string) {
+    const successful = await this.client
+      .api(`/me/todo/lists//${listId}/tasks/${taskId}`)
+      .delete();
+    return successful;
   }
 
 };

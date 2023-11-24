@@ -59,4 +59,8 @@ export default class TaskList implements Comparable{
 
         return result;
     }
+
+    groupName(){
+        return this.name.split(">")[0].trim()
+    }
 }

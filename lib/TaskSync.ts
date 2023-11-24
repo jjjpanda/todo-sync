@@ -7,6 +7,7 @@ import MSAuthServer from "./MSAuthServer";
 import Logger from "./util/logger"
 import ToDoSettings from "./model/ToDoSettings";
 import GraphClient from "./util/graphClient";
+import {App} from "obsidian"
 
 const logger = new Logger("TaskSync")
 export default class TaskSync {
@@ -15,7 +16,7 @@ export default class TaskSync {
     server: MSAuthServer;
     toDoManager: ToDoManager;
     
-    constructor(app, settings: ToDoSettings){
+    constructor(app: App, settings: ToDoSettings){
         this.obsidianUtils = new ObsidianUtils(app)
         this.taskManager = new TaskManager(this.obsidianUtils, settings.TASK_FOLDER)
         this.toDoManager = new ToDoManager()
@@ -47,12 +48,28 @@ export default class TaskSync {
             todoLists
         )
         logger.log("tasklist delta", taskListDelta)
-        
+
         const taskDelta = DeltaResolver.getTaskDeltas(
             taskLists.map(list => list.tasks).flat(), 
             todoLists.map(list => list.tasks).flat()
         )
         logger.log("task delta", taskDelta)
+
+        //task lists
+
+        // parameter given: Delta Object
+
+        // toRemote.delete
+        // toRemote.add 
+        // toRemote.modify
+
+        // return a new Delta object that removes all the toRemote stuff + adds a toOrigin.modify for each toRemote.add that contains the id
+        
+        // toOrigin.removeID + insert new ids
+        // toOrigin.add
+        // toOrigin.modify
+
+        // return an empty Delta object that represents all resolutions being fulfilled
 
     }
 

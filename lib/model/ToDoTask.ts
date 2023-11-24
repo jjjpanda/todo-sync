@@ -8,4 +8,5 @@ export default interface ToDoTask {
     dueDateTime: {
         dateTime: string
     }
+    lastModifiedDateTime: string
 }

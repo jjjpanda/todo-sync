@@ -50,6 +50,8 @@ export default class DeltaResolver {
     }
 
     static getTaskListDeltas(_origin: TaskList[], _remote: TaskList[], knownDelta = new Delta<TaskList>()): Delta<TaskList>{
+        const groups = new Set(_origin.map(list => list.groupName()))
+
         const delta: Delta<TaskList> = knownDelta
         let {origin, remote} = DeltaResolver.filterByKnownDelta<TaskList>(_origin, _remote, knownDelta);
 
@@ -86,7 +88,7 @@ export default class DeltaResolver {
         logger.debug("resolved tasklists", resolved)
         
         remote.forEach(taskList => {
-            if(taskList.name !== "__Other"){
+            if(taskList.name !== "__Other" && groups.has(taskList.groupName())){
                 delta.toOrigin.add.push(taskList)
             }
         })
@@ -96,6 +98,8 @@ export default class DeltaResolver {
     }
 
     static getTaskDeltas (_origin: Task[], _remote: Task[], knownDelta = new Delta<Task>): Delta<Task> {
+        const groups = new Set(_origin.map(task => task.parent.groupName()))
+
         const delta: Delta<Task> = knownDelta
         let {origin, remote} = DeltaResolver.filterByKnownDelta<Task>(_origin, _remote, knownDelta);
         
@@ -136,7 +140,7 @@ export default class DeltaResolver {
         logger.debug("resolved tasks", resolved)
 
         remote.forEach(task => {
-            if(task.parent.name !== "__Other"){
+            if(task.parent.name !== "__Other" && groups.has(task.parent.groupName())){
                 delta.toOrigin.add.push(task)
             }
         })

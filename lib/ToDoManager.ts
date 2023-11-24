@@ -16,24 +16,21 @@ export default class ToDoManager {
     setGraphClient(graphClient: GraphClient){
         this.graphClient = graphClient;
     }
-
-    async getTasks () {
-        return await this.graphClient!.getUserTasksList()
-	}
-
-	async getTaskItems (id: string) {
-		return await this.graphClient!.getUserTaskListItems(id)
-	}
     
     async getToDoTasks (){
-        if(!this.graphClient){
+        if(this.graphClient === null){
             return null;
         }
 
-        const taskSets = (await this.getTasks()).value
+        const taskSetResponse = await this.graphClient.getUserTasksLists()
+        const taskSets = taskSetResponse.value
         logger.debug("task-lists in to-do", taskSets)
         
-        const taskSetsExpanded = await Promise.all(taskSets.map(list => this.getTaskItems(list.id)))
+        const taskSetsExpanded = await Promise.all(
+            taskSets.map(
+                list => this.graphClient!.getUserTaskListItems(list.id)
+            )
+        )
         logger.debug("tasks in to-do", taskSetsExpanded)
 
         const contextualizedTaskSets = taskSetsExpanded.map((taskItems, index) => {
@@ -43,18 +40,20 @@ export default class ToDoManager {
             )
             taskList.id = taskSets[index].id
 
-            let overallModificationTime = 0
+            let taskListOverallModificationTime = 0
             
             taskList.addTasks(taskItems.value.map(item => {
                 const modifiedTime = moment(item.lastModifiedDateTime)
+                
                 const modifiedTimeUnix = modifiedTime ? modifiedTime.valueOf() : 0
-                overallModificationTime = Math.max(overallModificationTime, modifiedTimeUnix)
+                taskListOverallModificationTime = Math.max(taskListOverallModificationTime, modifiedTimeUnix)
+                
                 const task = new Task(taskList, item, modifiedTimeUnix)
                 task.id = item.id
                 return task
             }))
 
-            taskList.modifiedTime = overallModificationTime
+            taskList.modifiedTime = taskListOverallModificationTime
             return taskList
         })
 
