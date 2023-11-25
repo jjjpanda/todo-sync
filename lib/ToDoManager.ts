@@ -5,6 +5,7 @@ import moment from "moment"
 const logger = new Logger("ToDoManager")
 import Logger from "./util/logger"
 import GraphClient from "./util/graphClient"
+import Delta from "./model/Delta"
 export default class ToDoManager {
 
     graphClient: GraphClient | null
@@ -58,5 +59,37 @@ export default class ToDoManager {
         })
 
         return contextualizedTaskSets
+    }
+
+    async resolveListDelta(delta: Delta<TaskList>): Promise<Delta<TaskList>> {
+        if(this.graphClient === null){
+            throw new Error("not connected to graph api");
+        }
+
+        for(let list of delta.toRemote.delete){
+            await this.graphClient.deleteUserTaskList(list.id)
+        }
+
+        for(let list of delta.toRemote.add){
+            const addedList = await this.graphClient.postUserTaskList(list.toToDoTaskList())
+            list.id = addedList.id
+            delta.toOrigin.modify.push(list)
+        }
+
+        for(let list of delta.toRemote.modify){
+            await this.graphClient.patchUserTaskList(list.toToDoTaskList())
+        }
+    
+        delta.toRemote.add = [];
+        delta.toRemote.modify = [];
+        delta.toRemote.delete = [];
+
+        return delta
+    }
+
+    async resolveTaskDelta(delta: Delta<Task>): Promise<Delta<Task>>{
+        if(this.graphClient === null){
+            throw new Error("not connected to graph api");
+        }
     }
 }

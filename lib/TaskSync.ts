@@ -7,7 +7,7 @@ import MSAuthServer from "./MSAuthServer";
 import Logger from "./util/logger"
 import ToDoSettings from "./model/ToDoSettings";
 import GraphClient from "./util/graphClient";
-import {App} from "obsidian"
+import {App, TAbstractFile} from "obsidian"
 
 const logger = new Logger("TaskSync")
 export default class TaskSync {
@@ -37,55 +37,50 @@ export default class TaskSync {
     
 
     async initialResolution() {
-        logger.log("beginning initial resolution")
+        logger.info("beginning initial resolution")
         const taskLists = await this.obsidianUtils.parseTasks(this.taskManager.kanbanCards)
         logger.debug("task lists", taskLists)
         const todoLists = await this.toDoManager.getToDoTasks() ?? []
         logger.debug("todo lists", todoLists)
 
-        const taskListDelta = DeltaResolver.getTaskListDeltas(
+        let taskListDelta = DeltaResolver.getTaskListDeltas(
             taskLists, 
             todoLists
         )
-        logger.log("tasklist delta", taskListDelta)
+        logger.info("tasklist delta", taskListDelta)
 
-        const taskDelta = DeltaResolver.getTaskDeltas(
+        let taskDelta = DeltaResolver.getTaskDeltas(
             taskLists.map(list => list.tasks).flat(), 
             todoLists.map(list => list.tasks).flat()
         )
-        logger.log("task delta", taskDelta)
+        logger.info("task delta", taskDelta)
 
-        //task lists
+        //taskListDelta = await this.toDoManager.resolveListDelta(taskListDelta)
+        logger.debug("task list delta resolved to remote", taskListDelta)
+        taskListDelta = await this.taskManager.resolveListDelta(taskListDelta)
+        logger.info("task list delta resolved", taskListDelta)
 
-        // parameter given: Delta Object
+        taskDelta = await this.toDoManager.resolveTaskDelta(taskDelta)
+        logger.debug("task delta resolved to remote", taskDelta)
+        taskDelta = await this.taskManager.resolveTaskDelta(taskDelta)
+        logger.info("task delta resolved", taskDelta)
 
-        // toRemote.delete
-        // toRemote.add 
-        // toRemote.modify
-
-        // return a new Delta object that removes all the toRemote stuff + adds a toOrigin.modify for each toRemote.add that contains the id
-        
-        // toOrigin.removeID + insert new ids
-        // toOrigin.add
-        // toOrigin.modify
-
-        // return an empty Delta object that represents all resolutions being fulfilled
-
+        logger.info("initial resolution complete")
     }
 
     async periodicResolution(){
         
     }
 
-    async queueAdditionToRemote() {
+    async queueAdditionToRemote(file: TAbstractFile) {
 
     }
 
-    async queueModificationToRemote() {
+    async queueModificationToRemote(file: TAbstractFile, oldPath: string) {
 
     }
 
-    async queueDeletionToRemote() {
+    async queueDeletionToRemote(file: TAbstractFile) {
 
     }
 

@@ -61,7 +61,7 @@ export default class ToDoPlugin extends Plugin {
 		
 		this.registerDomEvent(document, "change", async (evt: MSLoginEvent) => {
 			const session = this.taskSync.server.getSession()
-			logger.log("login event", session, evt)
+			logger.info("login event", session, evt)
 
 			if(!session.loggedIn){
 				this.throwErrorAndQuit(new Error("not logged in"), "error with logging in")
@@ -91,25 +91,25 @@ export default class ToDoPlugin extends Plugin {
 				)
 
 				this.registerEvent(this.app.vault.on('create', async (file) => {
-					logger.log('created', file)
-					this.taskSync.queueAdditionToRemote()
+					logger.info('created', file)
+					this.taskSync.queueAdditionToRemote(file)
 					await this.taskSync.syncCards()
 				}))
 				this.registerEvent(this.app.vault.on('rename', async (file, oldPath) => {
-					logger.log('renamed', file, "from", oldPath)
-					this.taskSync.queueModificationToRemote()
+					logger.info('renamed', file, "from", oldPath)
+					this.taskSync.queueModificationToRemote(file, oldPath)
 					await this.taskSync.syncCards()
 				}))
 				this.registerEvent(this.app.vault.on('delete', async (file) => {
-					logger.log('deleted', file)
-					this.taskSync.queueDeletionToRemote()
+					logger.info('deleted', file)
+					this.taskSync.queueDeletionToRemote(file)
 					await this.taskSync.syncCards()
 				}))
 
 				this.registerEvent(this.app.vault.on('modify', async (file) => {
 					const cardIndex = this.taskSync.taskManager.findKanbanCard(file)
 					if(cardIndex != -1){
-						logger.log(file)
+						logger.info(file)
 						this.taskSync.queueModificationToRemote()
 					}
 				}));
@@ -125,7 +125,7 @@ export default class ToDoPlugin extends Plugin {
 
 	async loadSettings() {
 		this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData());
-		logger.log("loaded settings", this.settings)
+		logger.info("loaded settings", this.settings)
 		if(!this.settings.OAUTH_CLIENT_SECRET || !this.settings.OAUTH_CLIENT_ID){
 			this.throwErrorAndQuit(new Error("settings invalid"), "no client secret/id")
 		}

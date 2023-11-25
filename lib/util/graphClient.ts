@@ -3,11 +3,13 @@ import Logger from "./logger"
 import ToDoSettings from "lib/model/ToDoSettings";
 import ToDoTaskList from "lib/model/ToDoTaskList";
 import ToDoTask from "lib/model/ToDoTask";
-import MicrosoftGraphResponse from "lib/model/MicrosoftGraphResponse";
+import MicrosoftGraphResponseCollection from "lib/model/MicrosoftGraphResponseCollection";
+import Throttler from "./Throttler"
 
 const logger = new Logger("GraphClient");
 export default class GraphClient {
   client;
+  throttler = new Throttler(5);
 
   constructor(msalClient, userId, settings: ToDoSettings) {
     if (!msalClient || !userId) {
@@ -43,7 +45,7 @@ export default class GraphClient {
             done(null, response.accessToken);
           }
         } catch (err) {
-          logger.log(JSON.stringify(err, Object.getOwnPropertyNames(err)));
+          logger.info(JSON.stringify(err, Object.getOwnPropertyNames(err)));
           done(err, null);
         }
       }
@@ -51,29 +53,32 @@ export default class GraphClient {
   }
 
   async getUserDetails() {
+    await this.throttler.safeToCall();
     const user = await this.client
       .api('/me')
-      .select('displayName,mail,mailboxSettings,userPrincipalName')
+      .select('displayName,mail,userPrincipalName')
       .get();
     return user;
   }
 
-  async getUserTasksLists(): Promise<MicrosoftGraphResponse<ToDoTaskList[]>> {
+  async getUserTasksLists(): Promise<MicrosoftGraphResponseCollection<ToDoTaskList[]>> {
+    await this.throttler.safeToCall();
     const lists = await this.client
       .api('/me/todo/lists')
       .get();
-    
     return lists;
   }
 
-  async postUserTaskList(taskListObj: ToDoTaskList): Promise<MicrosoftGraphResponse<ToDoTaskList>> {
+  async postUserTaskList(taskListObj: ToDoTaskList): Promise<ToDoTaskList> {
+    await this.throttler.safeToCall();
     const list = await this.client
       .api(`/me/todo/lists`)
       .post(taskListObj);
     return list;
   }
   
-  async patchUserTaskList(taskListObj: ToDoTaskList): Promise<MicrosoftGraphResponse<ToDoTaskList>> {
+  async patchUserTaskList(taskListObj: ToDoTaskList): Promise<ToDoTaskList> {
+    await this.throttler.safeToCall();
     const list = await this.client
       .api(`/me/todo/lists/${taskListObj.id}`)
       .patch(taskListObj);
@@ -81,27 +86,31 @@ export default class GraphClient {
   }
 
   async deleteUserTaskList(listId: string) {
+    await this.throttler.safeToCall();
     const successful = await this.client
       .api(`/me/todo/lists/${listId}`)
       .delete();
     return successful;
   }
   
-  async getUserTaskListItems(listId: string): Promise<MicrosoftGraphResponse<ToDoTask[]>> {
+  async getUserTaskListItems(listId: string): Promise<MicrosoftGraphResponseCollection<ToDoTask[]>> {
+    await this.throttler.safeToCall();
     const tasks = await this.client
       .api(`/me/todo/lists/${listId}/tasks/`)
       .get();
     return tasks;
   }
 
-  async postUserTaskListItem(listId: string, taskObj: ToDoTask): Promise<MicrosoftGraphResponse<ToDoTask>> {
+  async postUserTaskListItem(listId: string, taskObj: ToDoTask): Promise<ToDoTask> {
+    await this.throttler.safeToCall();
     const task = await this.client
       .api(`/me/todo/lists/${listId}/tasks`)
       .post(taskObj);
     return task;
   }
   
-  async patchUserTaskListItem(listId: string, taskObj: ToDoTask): Promise<MicrosoftGraphResponse<ToDoTask>> {
+  async patchUserTaskListItem(listId: string, taskObj: ToDoTask): Promise<ToDoTask> {
+    await this.throttler.safeToCall();
     const task = await this.client
       .api(`/me/todo/lists/${listId}/tasks/${taskObj.id}`)
       .patch(taskObj);
@@ -109,6 +118,7 @@ export default class GraphClient {
   }
 
   async deleteUserTaskListItem(listId: string, taskId: string) {
+    await this.throttler.safeToCall();
     const successful = await this.client
       .api(`/me/todo/lists//${listId}/tasks/${taskId}`)
       .delete();

@@ -13,4 +13,8 @@ export default class DateTimeUtils {
       
         return "";
     }
+
+    static currentDateTimeString(){
+      return moment().format('YYYY-MM-DDTHH:mm:ss');;
+    }
 }

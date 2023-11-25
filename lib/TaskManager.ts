@@ -1,5 +1,8 @@
 
+import Task from "./model/Task";
+import TaskList from "./model/TaskList";
 import Logger from "./util/logger"
+import Delta from "./model/Delta";
 import ObsidianUtils from "./util/obsidianUtils";
 const logger = new Logger("TaskManager")
 export default class TaskManager {
@@ -21,7 +24,7 @@ export default class TaskManager {
     }
     
     async syncKanbanCards(){
-        logger.log("syncing cards from", this.folder)
+        logger.info("syncing cards from", this.folder)
         let tag = 'kanban_card';
 
         // Get all markdown files in the vault
@@ -51,7 +54,35 @@ export default class TaskManager {
         })))
 
         this.kanbanCards = kanbanCardsUnfiltered.filter(file => !!file)
-        logger.log("kanban cards file list", this.kanbanCards)
+        logger.info("kanban cards file list", this.kanbanCards)
+    }
+
+    async resolveListDelta(delta: Delta<TaskList>): Promise<Delta<TaskList>> {
+
+        // toOrigin.removeID 
+        for(let list of delta.toOrigin.removeID){
+            
+        }
+
+        // toOrigin.add
+        for(let list of delta.toOrigin.add){
+            
+        }
+
+        // toOrigin.modify + (insert new ids)
+        for(let list of delta.toOrigin.modify){
+            
+        }
+    
+        delta.toOrigin.add = [];
+        delta.toOrigin.modify = [];
+        delta.toOrigin.removeID = [];
+
+        return delta
+    }
+
+    async resolveTaskDelta(delta: Delta<Task>): Promise<Delta<Task>>{
+
     }
 
 }

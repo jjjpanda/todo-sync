@@ -3,6 +3,8 @@ import Logger from "../util/logger";
 import TaskList from "./TaskList";
 import Comparable from "./Comparable"
 import ToDoTask from "./ToDoTask";
+import { statusToSymbolObj, symbolToStatusObj } from "./TaskStatus";
+import { priorityToSymbol, symbolToPriority } from "./TaskPriority";
 
 const logger = new Logger("Task")
 export default class Task implements Comparable{
@@ -35,6 +37,21 @@ export default class Task implements Comparable{
         }
     }
 
+    toToDoTask(): ToDoTask{
+        return {
+            id: this.id,
+            title: this.title,
+            status: symbolToStatusObj[this.status],
+            body: {
+                content: priorityToSymbol(this.priority)
+            },
+            dueDateTime: {
+                dateTime: `${this.dueDate}T${this.dueTime}`,
+                timeZone: "America/New_York"
+            }
+        } as ToDoTask
+    }
+
     setTaskPropertiesWithString(taskString: string){
         const {status, text} = Task.lineToTask(taskString);
         const obj = Task.parseTextToObject(text)
@@ -47,43 +64,8 @@ export default class Task implements Comparable{
 
     setTaskPropertiesWithObject(taskObject: ToDoTask){
         this.title = taskObject.title
-        switch(taskObject.status){
-            case "notStarted":
-                this.status = " "
-                break;
-            case "inProgress":
-                this.status = "/"
-                break;
-            case "completed":
-                this.status = "x"
-                break;
-            case "waitingOnOthers":
-                this.status = "!"
-                break;
-            case "deferred":
-                this.status = "B"
-                break;
-        }
-        switch(taskObject.body?.content){
-            case "^^":
-                this.priority = "highest"
-                break;
-            case "^":
-                this.priority = "high"
-                break;
-            case "o":
-                this.priority = "medium"
-                break;
-            case "v":
-                this.priority = "low"
-                break;
-            case "vv":
-                this.priority = "lowest"
-                break;
-            default:
-                this.priority = "normal"
-                break;
-        }
+        this.status = statusToSymbolObj[taskObject.status]
+        this.priority = symbolToPriority(taskObject.body?.content)
         const {date, time} = Task.parseDateTime(taskObject.dueDateTime.dateTime)
         this.dueDate = date
         this.dueTime = time
@@ -159,8 +141,18 @@ export default class Task implements Comparable{
         }
     }
 
+    hasSameProperties(task: Task): boolean{
+        return (
+            this.dueDate === task.dueDate && 
+            this.dueTime === task.dueTime &&
+            this.priority === task.priority &&
+            this.title === task.title &&
+            this.status === task.status
+        )
+    }
+
     isAnOlderVersionOf(task: Task): boolean{
-        if(this.equals(task)){
+        if(this.equals(task) && !this.hasSameProperties(task)){
             return this.modifiedTime < task.modifiedTime
         }
         else{

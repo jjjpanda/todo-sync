@@ -9,7 +9,7 @@ export default class Logger{
         console.debug(this.prefix, ...args)
     }
 
-    log(...args: any[]){
+    info(...args: any[]){
         console.log(this.prefix, ...args)
     }
 

@@ -91,16 +91,16 @@ export default class MSAuthServer {
 		};
 
 		try {
-			logger.log("trying to get microsoft callback url")
+			logger.info("trying to get microsoft callback url")
 			const authUrl = await this.msalClient.getAuthCodeUrl(urlParameters);
 		
 			workspace.onLayoutReady(() => {
-				logger.log("opening microsoft login screen")
+				logger.info("opening microsoft login screen")
 				window.open(authUrl, "_blank")
 			})
 		}
 		catch (error) {
-			logger.log("failed to get microsoft callback url and sign in")
+			logger.info("failed to get microsoft callback url and sign in")
 			throw error
     	}
 	}
@@ -116,7 +116,7 @@ export default class MSAuthServer {
 		});
 
 		this._app.use('/auth/callback', async (req, res) => {
-			logger.log("ENTERING CALLBACK POST MS LOGIN")
+			logger.info("ENTERING CALLBACK POST MS LOGIN")
 			const scopes = this._settings.OAUTH_SCOPES || 'https://graph.microsoft.com/.default';
 			const tokenRequest = {
 				code: req.query.code,
@@ -142,7 +142,6 @@ export default class MSAuthServer {
 				this.users[this.session.userId] = {
 					displayName: user.displayName,
 					email: user.mail || user.userPrincipalName,
-					timeZone: user.mailboxSettings.timeZone
 				};
 				document.dispatchEvent(new MSLoginEvent("change"))
 			} catch(error) {
@@ -153,7 +152,7 @@ export default class MSAuthServer {
 		});
 
 		this._app.use("/auth/signout", async (req, res) => {
-			logger.log("ENTERING SIGN OUT MS FLOW")
+			logger.info("ENTERING SIGN OUT MS FLOW")
 			// Sign out
 			if (this.session.userId) {
 			  // Look up the user's account in the cache
@@ -178,7 +177,7 @@ export default class MSAuthServer {
 		return new Promise<void>((resolve, reject) => {
 			this._server = this._app
 				.listen(this._port, '127.0.0.1', () => {
-					logger.log(`server started at http://localhost:${this._port}`);
+					logger.info(`server started at http://localhost:${this._port}`);
 					resolve()
 				})
 				.on('error', err => {
@@ -191,7 +190,7 @@ export default class MSAuthServer {
 
 	stop() {
 		this._server.close();
-		logger.log(`server stopped`);
+		logger.info(`server stopped`);
 	}
 }
 

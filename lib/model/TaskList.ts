@@ -1,6 +1,7 @@
 import Task from "./Task"
 import Logger from "../util/logger";
 import Comparable from "./Comparable"
+import ToDoTaskList from "./ToDoTaskList";
 
 const logger = new Logger("TaskList")
 export default class TaskList implements Comparable{
@@ -15,6 +16,13 @@ export default class TaskList implements Comparable{
         this.name = name;
         this.modifiedTime = mtime
         this.tasks = []
+    }
+
+    toToDoTaskList(): ToDoTaskList{
+        return {
+            displayName: this.name,
+            id: this.id
+        } as ToDoTaskList
     }
 
     addTask(task: Task){
@@ -35,8 +43,14 @@ export default class TaskList implements Comparable{
         }
     }
 
+    hasSameProperties(taskList: TaskList): boolean{
+        return (
+            this.name !== taskList.name
+        )
+    }
+
     isAnOlderVersionOf(taskList: TaskList): boolean{
-        if(this.equals(taskList) && this.name !== taskList.name){
+        if(this.equals(taskList) && !this.hasSameProperties(taskList)){
             return this.modifiedTime < taskList.modifiedTime
         }
         else{
