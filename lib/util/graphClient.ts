@@ -20,28 +20,23 @@ export default class GraphClient {
   
     // Initialize Graph client
     this.client = Client.init({
-      // Implement an auth provider that gets a token
-      // from the app's MSAL instance
       authProvider: async (done) => {
         try {
-          // Get the user's account
           const account = await msalClient
             .getTokenCache()
             .getAccountByHomeId(userId);
   
           if (account) {
-            // Attempt to get the token silently
-            // This method uses the token cache and
-            // refreshes expired tokens as needed
             const scopes = settings.OAUTH_SCOPES || 'https://graph.microsoft.com/.default';
+            logger.debug("SCOPES", scopes.split(","))
             const response = await msalClient.acquireTokenSilent({
               scopes: scopes.split(','),
               redirectUri: settings.OAUTH_REDIRECT_URI,
               account: account
             });
-  
-            // First param to callback is the error,
-            // Set to null in success case
+
+            logger.debug("TOKEN", response)
+
             done(null, response.accessToken);
           }
         } catch (err) {
@@ -58,15 +53,37 @@ export default class GraphClient {
       .api('/me')
       .select('displayName,mail,userPrincipalName')
       .get();
+    logger.warn(user)
     return user;
   }
 
   async getUserTasksLists(): Promise<MicrosoftGraphResponseCollection<ToDoTaskList[]>> {
     await this.throttler.safeToCall();
-    const lists = await this.client
-      .api('/me/todo/lists')
-      .get();
-    return lists;
+
+    let result = {
+      value: [] as ToDoTaskList[]
+    } as MicrosoftGraphResponseCollection<ToDoTaskList[]>
+
+    let roundCount = 0;
+    let lists = {
+      "@odata.nextLink": "/me/todo/lists/delta"
+    } as MicrosoftGraphResponseCollection<ToDoTaskList[]>
+
+    while(!!lists["@odata.nextLink"]){
+      lists = await this.client
+        .api(lists["@odata.nextLink"])
+        .get() as MicrosoftGraphResponseCollection<ToDoTaskList[]>;
+
+      if(lists.value.length === 0){
+        break;
+      }
+      result.value = [...result.value, ...lists.value] 
+      roundCount++
+    } 
+
+    logger.warn("lists", result, "after rounds:", roundCount)
+    
+    return result;
   }
 
   async postUserTaskList(taskListObj: ToDoTaskList): Promise<ToDoTaskList> {
@@ -95,10 +112,30 @@ export default class GraphClient {
   
   async getUserTaskListItems(listId: string): Promise<MicrosoftGraphResponseCollection<ToDoTask[]>> {
     await this.throttler.safeToCall();
-    const tasks = await this.client
-      .api(`/me/todo/lists/${listId}/tasks/`)
-      .get();
-    return tasks;
+
+    let result = {
+      value: [] as ToDoTask[]
+    } as MicrosoftGraphResponseCollection<ToDoTask[]>
+
+    let roundCount = 0;
+    let tasks = {
+      "@odata.nextLink": `/me/todo/lists/${listId}/tasks/delta`
+    } as MicrosoftGraphResponseCollection<ToDoTask[]>
+
+    while(tasks["@odata.nextLink"]){
+      tasks = await this.client
+        .api(tasks["@odata.nextLink"])
+        .get() as MicrosoftGraphResponseCollection<ToDoTask[]>;
+      if(tasks.value.length === 0){
+        break;
+      }
+      result.value = [...result.value, ...tasks.value] 
+      roundCount++
+    } 
+
+    logger.warn("tasks", result, "after rounds:", roundCount)
+
+    return result;
   }
 
   async postUserTaskListItem(listId: string, taskObj: ToDoTask): Promise<ToDoTask> {
@@ -120,7 +157,7 @@ export default class GraphClient {
   async deleteUserTaskListItem(listId: string, taskId: string) {
     await this.throttler.safeToCall();
     const successful = await this.client
-      .api(`/me/todo/lists//${listId}/tasks/${taskId}`)
+      .api(`/me/todo/lists/${listId}/tasks/${taskId}`)
       .delete();
     return successful;
   }

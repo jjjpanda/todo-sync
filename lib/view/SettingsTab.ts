@@ -1,4 +1,4 @@
-import { App, PluginSettingTab, Setting } from 'obsidian';
+import { App, PluginSettingTab, Setting, TFile, TFolder } from 'obsidian';
 import ToDoPlugin from 'main';
 import Logger from "../util/logger";
 
@@ -22,13 +22,15 @@ export default class SettingsTab extends PluginSettingTab {
             .setDesc('Select a folder from the vault that has task folders')
             .addDropdown(dropdown => {
                 // Get the list of all markdown files in the vault
-                let files = this.app.vault.getMarkdownFiles();
+                let abstractFiles = this.app.vault.getAllLoadedFiles();
 
                 // Create an object with folder paths as keys and display names as values
                 let options = {};
-                files.forEach(file => {
-                    let folderPath = file.path.substring(0, file.path.lastIndexOf('/'));
-                    options[folderPath] = folderPath;
+				
+                abstractFiles.forEach(fileOrFolder => {
+                    if(!("extension" in (fileOrFolder as TFile))){
+						options[fileOrFolder.path] = fileOrFolder.path;
+					}
                 });
 
                 dropdown
@@ -36,7 +38,8 @@ export default class SettingsTab extends PluginSettingTab {
 					.onChange(async (value) => {
 						this.plugin.settings.TASK_FOLDER = value;
 						await this.plugin.saveSettings();
-					});
+					})
+					.setValue(this.plugin.settings.TASK_FOLDER);
             });
 
 		new Setting(containerEl)

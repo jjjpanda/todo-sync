@@ -14,8 +14,12 @@ export default class ToDoPlugin extends Plugin {
 	private taskSync: TaskSync
 	
 	async onload() {
-		await this.loadSettings();
-		this.addSettingTab(new SettingsTab(this.app, this));
+		try{
+			await this.loadSettings();
+		} catch(e){
+			logger.error(e)
+			return
+		}
 
 		this.taskSync = new TaskSync(this.app, this.settings);
 		
@@ -110,7 +114,7 @@ export default class ToDoPlugin extends Plugin {
 					const cardIndex = this.taskSync.taskManager.findKanbanCard(file)
 					if(cardIndex != -1){
 						logger.info(file)
-						this.taskSync.queueModificationToRemote()
+						this.taskSync.queueModificationToRemote(file, file.path)
 					}
 				}));
 				
@@ -126,6 +130,7 @@ export default class ToDoPlugin extends Plugin {
 	async loadSettings() {
 		this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData());
 		logger.info("loaded settings", this.settings)
+		this.addSettingTab(new SettingsTab(this.app, this));
 		if(!this.settings.OAUTH_CLIENT_SECRET || !this.settings.OAUTH_CLIENT_ID){
 			this.throwErrorAndQuit(new Error("settings invalid"), "no client secret/id")
 		}
@@ -139,6 +144,7 @@ export default class ToDoPlugin extends Plugin {
 
 	async saveSettings() {
 		await this.saveData(this.settings);
+		await this.onload()
 	}
 }
 

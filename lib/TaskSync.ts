@@ -55,7 +55,8 @@ export default class TaskSync {
         )
         logger.info("task delta", taskDelta)
 
-        //taskListDelta = await this.toDoManager.resolveListDelta(taskListDelta)
+        /**
+        taskListDelta = await this.toDoManager.resolveListDelta(taskListDelta)
         logger.debug("task list delta resolved to remote", taskListDelta)
         taskListDelta = await this.taskManager.resolveListDelta(taskListDelta)
         logger.info("task list delta resolved", taskListDelta)
@@ -64,6 +65,7 @@ export default class TaskSync {
         logger.debug("task delta resolved to remote", taskDelta)
         taskDelta = await this.taskManager.resolveTaskDelta(taskDelta)
         logger.info("task delta resolved", taskDelta)
+        */
 
         logger.info("initial resolution complete")
     }

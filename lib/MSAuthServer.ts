@@ -36,7 +36,7 @@ export default class MSAuthServer {
 				loggerCallback: (loglevel, message, containsPii) => {
 				  if (!containsPii) logger.debug(loglevel, message);
 				},
-				piiLoggingEnabled: false,
+				piiLoggingEnabled: true,
 				logLevel: LogLevel.Verbose,
 			  }
 			}
@@ -50,24 +50,6 @@ export default class MSAuthServer {
 		}
 		else{
 			return null
-		}
-	}
-
-	async getTasks () {
-		if(this.session.loggedIn){
-			return await this.graphClient.getUserTasksList()
-		}
-	}
-
-	async getTaskItems (id) {
-		if(this.session.loggedIn){
-			return await this.graphClient.getUserTaskListItems(id)
-		}
-	}
-
-	async addTaskItems (id){
-		if(this.session.loggedIn){
-			// return await this.graphClient.upsertUserTaskListItems(id)
 		}
 	}
 
