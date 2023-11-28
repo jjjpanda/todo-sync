@@ -86,14 +86,13 @@ export default class DeltaResolver {
             }
         })
         
-        logger.debug("resolved tasklists", resolved)
+        logger.debug("resolved tasklists", resolved, "now handling", remote)
         
         remote.forEach(taskList => {
             if(taskList.name !== "__Other" && groups.has(taskList.groupName())){
                 delta.toOrigin.add.push(taskList)
             }
         })
-
 
         return delta
     }
@@ -139,7 +138,7 @@ export default class DeltaResolver {
             }
         })
 
-        logger.debug("resolved tasks", resolved)
+        logger.debug("resolved tasks", resolved, "now handling", remote)
 
         remote.forEach(task => {
             if(task.parent.name !== "__Other" && groups.has(task.parent.groupName())){

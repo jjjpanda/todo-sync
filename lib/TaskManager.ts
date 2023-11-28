@@ -59,9 +59,10 @@ export default class TaskManager {
 
     async resolveListDelta(delta: Delta<TaskList>): Promise<Delta<TaskList>> {
     
+        logger.error(this.folder, delta)
         // toOrigin.add
         for(let list of delta.toOrigin.add){
-            this.obsidianUtils.getVault().create()
+            await this.obsidianUtils.getVault().create(`${this.folder}/${list.group}/${list.name}`, "")
         }
 
         // toOrigin.removeID 
@@ -74,9 +75,9 @@ export default class TaskManager {
             
         }
     
-        delta.toOrigin.add = [];
-        delta.toOrigin.modify = [];
-        delta.toOrigin.removeID = [];
+        // delta.toOrigin.add = [];
+        // delta.toOrigin.modify = [];
+        // delta.toOrigin.removeID = [];
 
         return delta
     }
