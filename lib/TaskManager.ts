@@ -39,7 +39,7 @@ export default class TaskManager {
         logger.debug("found files", filesInFolder)
 
         // Read all files and filter based on the tag
-        const kanbanCardsUnfiltered = await Promise.all(filesInFolder.map(file => this.obsidianUtils.getFile(file).then(content => {
+        const kanbanCardsUnfiltered = await Promise.all(filesInFolder.map(file => this.obsidianUtils.getFileContents(file).then(content => {
             // Parse YAML frontmatter
             let contentSplit = content.split('---');
             let frontMatter = contentSplit[1];
@@ -58,15 +58,15 @@ export default class TaskManager {
     }
 
     async resolveListDelta(delta: Delta<TaskList>): Promise<Delta<TaskList>> {
+    
+        // toOrigin.add
+        for(let list of delta.toOrigin.add){
+            this.obsidianUtils.getVault().create()
+        }
 
         // toOrigin.removeID 
         for(let list of delta.toOrigin.removeID){
-            
-        }
-
-        // toOrigin.add
-        for(let list of delta.toOrigin.add){
-            
+    
         }
 
         // toOrigin.modify + (insert new ids)

@@ -6,21 +6,29 @@ import ToDoTaskList from "./ToDoTaskList";
 const logger = new Logger("TaskList")
 export default class TaskList implements Comparable{
     name: string;
+    group: string;
     tasks: Task[];
     id: string;
     modifiedTime: number;
     
     
-    constructor(name: string, mtime: number){
+    constructor(title: string, mtime: number){
         this.id = ""
-        this.name = name;
+        if(title.includes(">")){
+            this.group = title.split(">")[0].trim();
+            this.name = title.split(">")[1].trim();
+        }
+        else{
+            this.group = ""
+            this.name = title;
+        }
         this.modifiedTime = mtime
         this.tasks = []
     }
 
     toToDoTaskList(): ToDoTaskList{
         return {
-            displayName: this.name,
+            displayName: this.title(),
             id: this.id
         } as ToDoTaskList
     }
@@ -45,7 +53,8 @@ export default class TaskList implements Comparable{
 
     hasSameProperties(taskList: TaskList): boolean{
         return (
-            this.name !== taskList.name
+            this.name !== taskList.name &&
+            this.group !== taskList.group
         )
     }
 
@@ -59,13 +68,13 @@ export default class TaskList implements Comparable{
     }
 
     static from(obj: {
-        name?: string;
+        title?: string;
         tasks?: Task[];
         id?: string;
         modifiedTime?: number;
     }): TaskList {
         let result = new TaskList(
-            obj.name ?? "", 
+            obj.title ?? "", 
             obj.modifiedTime ?? 0
         );
         result.id = obj.id ?? "";
@@ -75,6 +84,10 @@ export default class TaskList implements Comparable{
     }
 
     groupName(){
-        return this.name.split(">")[0].trim()
+        return this.group
+    }
+
+    title() {
+        return `${this.group} > ${this.name}`
     }
 }

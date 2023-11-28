@@ -8,12 +8,12 @@ describe("DeltaResolver", () => {
             const delta = DeltaResolver.getTaskListDeltas(
                 [
                     TaskList.from({
-                        name: "taskList1",
+                        title: "tasks > taskList1",
                     }) 
                 ] as TaskList[],
                 [
                     TaskList.from({
-                        name: "taskList2",
+                        title: "tasks > taskList2",
                         id: "taskList2ID"
                     })
                 ] as TaskList[]
@@ -41,14 +41,14 @@ describe("DeltaResolver", () => {
             const delta = DeltaResolver.getTaskListDeltas(
                 [
                     TaskList.from({
-                        name: "taskList1", 
+                        title: "tasks > taskList1", 
                         id: "taskListID",
                         modifiedTime: 0
                     })
                 ] as TaskList[],
                 [
                     TaskList.from({
-                        name: "taskList2",
+                        title: "tasks > taskList2",
                         id: "taskListID",
                         modifiedTime: 1
                     })
@@ -72,16 +72,25 @@ describe("DeltaResolver", () => {
         it("tests delete of task list", () => {
             const delta = DeltaResolver.getTaskListDeltas(
                 [
-                    
+                    TaskList.from({
+                        title: "tasks > test",
+                        id: "this was always here",
+                        modifiedTime: 1
+                    }),
                 ] as TaskList[],
                 [
                     TaskList.from({
-                        name: "taskList",
+                        title: "tasks > test",
+                        id: "this was always here",
+                        modifiedTime: 1
+                    }),
+                    TaskList.from({
+                        title: "tasks > taskList",
                         id: "taskListID",
                         modifiedTime: 1
                     }),
                     TaskList.from({
-                        name: "taskList2",
+                        title: "tasks > taskList2",
                         id: "taskListID2"
                     })
                 ] as TaskList[],
@@ -96,7 +105,7 @@ describe("DeltaResolver", () => {
                         modify: [],
                         delete: [
                             TaskList.from({
-                                name: "taskList",
+                                title: "tasks > taskList",
                                 id: "taskListID",
                                 modifiedTime: 1
                             })

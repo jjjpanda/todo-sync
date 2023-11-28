@@ -50,7 +50,7 @@ export default class DeltaResolver {
     }
 
     static getTaskListDeltas(_origin: TaskList[], _remote: TaskList[], knownDelta = new Delta<TaskList>()): Delta<TaskList>{
-        const groups = new Set(_origin.map(list => list.groupName()))
+        const groups = new Set(_origin.map(list => list.groupName()).filter(groupName => groupName.length > 0))
         logger.debug("groups", groups)
 
         const delta: Delta<TaskList> = knownDelta

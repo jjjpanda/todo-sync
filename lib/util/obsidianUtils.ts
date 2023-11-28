@@ -1,6 +1,6 @@
 import Task from "../model/Task"
 import TaskList from "../model/TaskList";
-import { App, FileSystemAdapter, TFile, TAbstractFile } from 'obsidian';
+import { App, FileSystemAdapter, TFile, TAbstractFile, Vault } from 'obsidian';
 import path from 'path';
 import Logger from "./logger";    
 
@@ -17,6 +17,10 @@ export default class ObsidianUtils {
 		this.fileSystem = this.app.vault.adapter as FileSystemAdapter;
 	}
 
+	getVault(): Vault{
+		return this.app.vault;
+	}
+
 	getVaultName(): string {
 		return this.app.vault.getName();
 	}
@@ -29,7 +33,7 @@ export default class ObsidianUtils {
 		return path.join(this.getVaultDirectory(), this.app.vault.configDir, 'plugins/todo-sync/');
 	}
 
-	async getFile(file: TFile): Promise<string> {
+	async getFileContents(file: TFile): Promise<string> {
 		return await this.app.vault.read(file)
 	}
 
@@ -46,15 +50,15 @@ export default class ObsidianUtils {
     }
 
 	async parseTasks(files: TFile[]){
-        const contents = await Promise.all(files.map(card => this.getFile(card)))
+        const contents = await Promise.all(files.map(card => this.getFileContents(card)))
         const taskLists = Array.from(
 			new Set(
-				files.map(card => ({name: this.label(card), mtime: card.stat.mtime ?? 0}))
+				files.map(card => ({title: this.label(card), mtime: card.stat.mtime ?? 0}))
 			)
-		).map(({name, mtime}) => new TaskList(name, mtime))
+		).map(({title, mtime}) => new TaskList(title, mtime))
         contents.forEach((content, index) => {
-            const name = this.label(files[index])
-            const indexOfNamedTaskList = taskLists.findIndex(list => list.name === name);
+            const title = this.label(files[index])
+            const indexOfNamedTaskList = taskLists.findIndex(list => list.title() === title);
             taskLists[indexOfNamedTaskList].addTasks(
                 content
                     .split("\n")

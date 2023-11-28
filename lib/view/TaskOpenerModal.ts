@@ -15,10 +15,11 @@ export default class TaskOpenerModal extends FuzzySuggestModal<TFile> {
     }
 
     getItemText(item) {
-        return `${item.parent.name} > ${item.basename}`;
+        const group = item.parent.name
+        return `${group} > ${item.basename}`;
     }
 
     onChooseItem(item, evt) {
-        this.app.workspace.openLinkText(item.path, '', true);
+        this.app.workspace.openLinkText(item.path, '', true, {active: true});
     }
 }

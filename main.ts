@@ -1,4 +1,4 @@
-import { Plugin, Notice } from 'obsidian';
+import { Plugin, Notice, MarkdownView, Editor } from 'obsidian';
 
 import ToDoSettings, { DEFAULT_SETTINGS } from 'lib/model/ToDoSettings';
 import SettingsTab from 'lib/view/SettingsTab';
@@ -7,10 +7,12 @@ import {MSLoginEvent} from 'lib/MSAuthServer';
 import TaskSync from './lib/TaskSync'
 import TaskOpenerModal from "./lib/view/TaskOpenerModal"
 import Logger from "./lib/util/logger"
+import { reorderCheckboxes } from 'lib/util/TaskReorderingUtil';
 const logger: Logger = new Logger("PluginClass");
 export default class ToDoPlugin extends Plugin {
 	settings: ToDoSettings;
 	taskFileSelector: HTMLElement;
+	taskReorderButton: HTMLElement
 	private taskSync: TaskSync
 	
 	async onload() {
@@ -52,13 +54,28 @@ export default class ToDoPlugin extends Plugin {
 				}
 			);
 
+			this.taskReorderButton = this.addRibbonIcon(
+				'arrow-up-down',
+				"Reorder Tasks",
+				(evt: MouseEvent) => {
+					const view = this.app.workspace.getActiveViewOfType(MarkdownView);
+					if(!view){
+						return
+					}
+					const editor = view.editor
+					if(editor){
+						reorderCheckboxes(view.getMode(), editor, this.app.vault, view.file);
+					}
+				}
+			)
+
 			this.addCommand({
 				id: 'reorder-tasks-on-page',
 				name: 'Reorder Tasks',
-				callback: () => {
-					
-					new Notice("REORDER")
-				}
+				editorCallback(editor: Editor, ctx) {
+					reorderCheckboxes("source", editor);
+				},
+				
 			});
 		})
 

@@ -66,9 +66,13 @@ export default class Task implements Comparable{
         this.title = taskObject.title
         this.status = statusToSymbolObj[taskObject.status]
         this.priority = symbolToPriority(taskObject.body?.content)
-        const {date, time} = Task.parseDateTime(taskObject.dueDateTime.dateTime)
-        this.dueDate = date
-        this.dueTime = time
+        try{
+            const {date, time} = Task.parseDateTime(taskObject.dueDateTime.dateTime)
+            this.dueDate = date
+            this.dueTime = time
+        } catch(e){
+            logger.warn("no datetime parsing", this, e)
+        }
     }
     
     static parseDateTime(dateTime: string){
