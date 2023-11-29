@@ -71,7 +71,7 @@ export default class Task implements Comparable{
             this.dueDate = date
             this.dueTime = time
         } catch(e){
-            logger.warn("no datetime parsing", this, e)
+            //logger.warn("no datetime parsing", this, e)
         }
     }
     

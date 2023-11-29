@@ -6,6 +6,7 @@ export default interface ToDoSettings {
 	OAUTH_AUTHORITY: string;
 	PORT: string;
 	TASK_FOLDER: string;
+	NEW_CARD_TEMPLATE: string;
 	SYNC_RATE: string;
 }
 
@@ -17,5 +18,6 @@ export const DEFAULT_SETTINGS: ToDoSettings = {
 	OAUTH_AUTHORITY: "https://login.microsoftonline.com/common/",
 	PORT: "3000",
 	TASK_FOLDER: "/",
+	NEW_CARD_TEMPLATE: "",
 	SYNC_RATE: "10000"
 };

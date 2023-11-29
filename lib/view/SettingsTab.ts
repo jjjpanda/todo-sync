@@ -43,6 +43,29 @@ export default class SettingsTab extends PluginSettingTab {
             });
 
 		new Setting(containerEl)
+            .setName('New Card Template Selection')
+            .setDesc('Select a file from the vault that this plugin will use to create new cards')
+            .addDropdown(dropdown => {
+                // Get the list of all markdown files in the vault
+                let files = this.app.vault.getMarkdownFiles();
+
+                // Create an object with folder paths as keys and display names as values
+                let options = {} as {[key: string]: string};
+				
+                files.forEach(file => {
+					options[file.path] = file.path;
+                });
+
+                dropdown
+					.addOptions(options)
+					.onChange(async (value) => {
+						this.plugin.settings.NEW_CARD_TEMPLATE = value;
+						await this.plugin.saveSettings();
+					})
+					.setValue(this.plugin.settings.NEW_CARD_TEMPLATE);
+            });
+
+		new Setting(containerEl)
 			.setName('Auth Server Port')
 			.setDesc('Authentication Daemon Port')
 			.addText(text => text

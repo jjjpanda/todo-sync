@@ -39,9 +39,9 @@ export default class ToDoManager {
         const contextualizedTaskSets = taskSetsExpanded.map((taskItems, index) => {
             const taskList = new TaskList(
                 taskSets[index].wellknownListName === "defaultList" ? "__Other" : taskSets[index].displayName,
+                taskSets[index].id,
                 taskSets[index].lastModifiedDateTime
             )
-            taskList.id = taskSets[index].id
 
             let taskListOverallModificationTime = 0
             
@@ -81,10 +81,6 @@ export default class ToDoManager {
         for(let list of delta.toRemote.modify){
             await this.graphClient.patchUserTaskList(list.toToDoTaskList())
         }
-    
-        delta.toRemote.add = [];
-        delta.toRemote.modify = [];
-        delta.toRemote.delete = [];
 
         return delta
     }

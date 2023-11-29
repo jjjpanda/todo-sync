@@ -3,18 +3,39 @@ import TaskList from "../model/TaskList";
 import { App, FileSystemAdapter, TFile, TAbstractFile, Vault } from 'obsidian';
 import path from 'path';
 import Logger from "./logger";    
+import TaskManager from "lib/TaskManager";
 
 const logger: Logger = new Logger("ObsidianUtils")
 
 export default class ObsidianUtils {
 	private app: App;
 	private fileSystem: FileSystemAdapter;
+	private newCardTemplateContents: string;
+	private newCardTemplatePath: string;
 
 	private yamlRegex = /^---.*?---\n(.*?)($|---)/s;
 
-	constructor(app: App) {
+	constructor(app: App, newCardTemplatePath: string) {
 		this.app = app;
 		this.fileSystem = this.app.vault.adapter as FileSystemAdapter;
+		this.newCardTemplatePath = newCardTemplatePath
+	}
+
+	async getNewCardContents(): Promise<string>{
+		if(this.newCardTemplateContents){
+			return this.newCardTemplateContents
+		}
+		else{
+			const file = this.getFile(this.newCardTemplatePath)
+			if(file){
+				const contents = await this.getFileContents(file)
+				this.newCardTemplateContents = contents;
+				return await this.getNewCardContents();
+			}
+			else{
+				return ""
+			}
+		}
 	}
 
 	getVault(): Vault{
@@ -37,6 +58,16 @@ export default class ObsidianUtils {
 		return await this.app.vault.read(file)
 	}
 
+	getFile(path: string): TFile | null{
+		const files = this.getFiles();
+		for(const file of files){
+			if(file.path === path){
+				return file
+			}
+		}
+		return null;
+	}
+
 	getFiles(): TFile[] {
 		return this.app.vault.getMarkdownFiles()
 	}
@@ -50,20 +81,31 @@ export default class ObsidianUtils {
     }
 
 	async parseTasks(files: TFile[]){
-        const contents = await Promise.all(files.map(card => this.getFileContents(card)))
+        const contentFilePairs = await Promise.all(
+			files.map(file => {
+				return new Promise<{file: TFile, content: string}>(async resolve => {
+					const content = await this.getFileContents(file)
+					resolve({file, content})
+				})
+			})
+		)
         const taskLists = Array.from(
 			new Set(
-				files.map(card => ({title: this.label(card), mtime: card.stat.mtime ?? 0}))
+				contentFilePairs.map(({file, content}) => ({title: this.label(file), content, mtime: file.stat.mtime ?? 0}))
 			)
-		).map(({title, mtime}) => new TaskList(title, mtime))
-        contents.forEach((content, index) => {
-            const title = this.label(files[index])
+		).map(({title, content, mtime}) => new TaskList(
+			title, 
+			TaskManager.parseId(content) ?? "",
+			mtime
+		))
+        contentFilePairs.forEach(({file, content}) => {
+            const title = this.label(file)
             const indexOfNamedTaskList = taskLists.findIndex(list => list.title() === title);
             taskLists[indexOfNamedTaskList].addTasks(
-                content
+            	content
                     .split("\n")
                     .filter(line => Task.isLineATask(line) != null)
-                    .map(taskLine => new Task(taskLists[indexOfNamedTaskList], taskLine, files[index].stat.mtime ?? 0))
+                    .map(taskLine => new Task(taskLists[indexOfNamedTaskList], taskLine, file.stat.mtime ?? 0))
             )
         })
         

@@ -12,8 +12,8 @@ export default class TaskList implements Comparable{
     modifiedTime: number;
     
     
-    constructor(title: string, mtime: number){
-        this.id = ""
+    constructor(title: string, id: string, mtime: number){
+        this.id = id
         if(title.includes(">")){
             this.group = title.split(">")[0].trim();
             this.name = title.split(">")[1].trim();
@@ -75,9 +75,9 @@ export default class TaskList implements Comparable{
     }): TaskList {
         let result = new TaskList(
             obj.title ?? "", 
+            obj.id ?? "",
             obj.modifiedTime ?? 0
         );
-        result.id = obj.id ?? "";
         result.tasks = obj.tasks ?? [];
 
         return result;
@@ -89,5 +89,9 @@ export default class TaskList implements Comparable{
 
     title() {
         return `${this.group} > ${this.name}`
+    }
+
+    pathFrom(folder: string){
+        return `${folder}/${this.group}/${this.name}.md`
     }
 }

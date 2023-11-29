@@ -17,7 +17,7 @@ export default class TaskSync {
     toDoManager: ToDoManager;
     
     constructor(app: App, settings: ToDoSettings){
-        this.obsidianUtils = new ObsidianUtils(app)
+        this.obsidianUtils = new ObsidianUtils(app, settings.NEW_CARD_TEMPLATE)
         this.taskManager = new TaskManager(this.obsidianUtils, settings.TASK_FOLDER)
         this.toDoManager = new ToDoManager()
         this.server = new MSAuthServer(settings)
@@ -55,10 +55,10 @@ export default class TaskSync {
         )
         logger.info("task delta", taskDelta)
 
-        //taskListDelta = await this.toDoManager.resolveListDelta(taskListDelta)
-        logger.debug("task list delta resolved to remote", taskListDelta)
-        taskListDelta = await this.taskManager.resolveListDelta(taskListDelta)
-        logger.info("task list delta resolved", taskListDelta)
+        // taskListDelta = await this.toDoManager.resolveListDelta(taskListDelta)
+        // logger.debug("task list delta resolved to remote", taskListDelta)
+        // taskListDelta = await this.taskManager.resolveListDelta(taskListDelta)
+        // logger.info("task list delta resolved", taskListDelta)
 
         // taskDelta = await this.toDoManager.resolveTaskDelta(taskDelta)
         // logger.debug("task delta resolved to remote", taskDelta)

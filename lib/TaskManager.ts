@@ -9,7 +9,7 @@ export default class TaskManager {
     folder: string;
     obsidianUtils: ObsidianUtils;
 	kanbanCards;
-    
+    static idRegex = /<!---(.*)--->/
 
     constructor(obsidianUtils, folder){
         this.obsidianUtils = obsidianUtils;
@@ -58,32 +58,57 @@ export default class TaskManager {
     }
 
     async resolveListDelta(delta: Delta<TaskList>): Promise<Delta<TaskList>> {
+
+        const newCardContents = await this.obsidianUtils.getNewCardContents()
     
         logger.error(this.folder, delta)
         // toOrigin.add
         for(let list of delta.toOrigin.add){
-            await this.obsidianUtils.getVault().create(`${this.folder}/${list.group}/${list.name}`, "")
+            await this.obsidianUtils.getVault().create(list.pathFrom(this.folder), `${newCardContents}\n<!---${list.id}--->`)
         }
 
         // toOrigin.removeID 
         for(let list of delta.toOrigin.removeID){
-    
+            const file = this.obsidianUtils.getFile(list.pathFrom(this.folder));
+            if(file){
+                const contents = await this.obsidianUtils.getFileContents(file)
+                await this.obsidianUtils.getVault().modify(file, contents.replace(TaskManager.idRegex, ""))
+            }
+            else{
+                logger.warn("couldn't find", file)
+            }
         }
 
         // toOrigin.modify + (insert new ids)
         for(let list of delta.toOrigin.modify){
-            
+            const file = this.obsidianUtils.getFile(list.pathFrom(this.folder));
+            if(file){
+                const contents = await this.obsidianUtils.getFileContents(file)
+                const id = TaskManager.parseId(contents);
+                if(id){
+                    //id existed
+                    await this.obsidianUtils.getVault().modify(file, contents.replace(id, list.id))
+                }
+                else{
+                    await this.obsidianUtils.getVault().modify(file, `${contents}\n<!---${list.id}--->`)
+                }
+                await this.obsidianUtils.getVault().rename(file, list.pathFrom(this.folder))
+            }
+            else{
+                logger.warn("couldn't find", file)
+            }
         }
     
-        // delta.toOrigin.add = [];
-        // delta.toOrigin.modify = [];
-        // delta.toOrigin.removeID = [];
-
         return delta
     }
 
     async resolveTaskDelta(delta: Delta<Task>): Promise<Delta<Task>>{
 
+    }
+
+    static parseId(contents: string){
+        const match = contents.match(TaskManager.idRegex);
+        return match ? match[1] : null
     }
 
 }
