@@ -89,5 +89,33 @@ export default class ToDoManager {
         if(this.graphClient === null){
             throw new Error("not connected to graph api");
         }
+
+        for(let task of delta.toRemote.delete){
+            try{
+                await this.graphClient.deleteUserTaskListItem(task.parent.id, task.id)
+            } catch(e){
+                logger.error(task, e)
+            }
+        }
+
+        for(let task of delta.toRemote.add){
+            try{
+                const addedTask = await this.graphClient.postUserTaskListItem(task.parent.id, task.toToDoTask())
+                task.id = addedTask.id
+                delta.toOrigin.modify.push(task)
+            } catch(e){
+                logger.error(task, e)
+            }
+        }
+
+        for(let task of delta.toRemote.modify){
+            try{
+                await this.graphClient.patchUserTaskListItem(task.parent.id, task.toToDoTask())
+            } catch(e){
+                logger.error(task, e)
+            }
+        }
+
+        return delta
     }
 }

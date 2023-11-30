@@ -1,7 +1,9 @@
 import { Editor, MarkdownViewModeType, TFile, Vault } from "obsidian";
 
 import Logger from "./logger";
-
+import { CHECKBOX_REGEX } from "lib/model/TaskRegex";
+import { CHECKBOX_LIST_REGEX } from "lib/model/TaskRegex";
+import { EXTRA_NEWLINE_BETWEEN_TASKS_REGEX } from "lib/model/TaskRegex";
 
 const logger = new Logger("Reordering Tasks")
 export function reorderCheckboxes(mode: MarkdownViewModeType, editor: Editor, vault?: Vault, file?: TFile) {
@@ -18,9 +20,7 @@ export function reorderCheckboxes(mode: MarkdownViewModeType, editor: Editor, va
 }
 
 function reorderCheckboxesInList(inputText: string) {
-    const checkboxPattern = /^- \[(B| |\/|x|!)\] .+(\n[ \t]+-.*)*$/gm;
-  
-    const allCheckboxes = inputText.match(checkboxPattern) ?? [];
+    const allCheckboxes = inputText.match(CHECKBOX_REGEX) ?? [];
     logger.debug()
 
     const filterBySymbol = (symbol: string) => allCheckboxes.filter((cb) => cb.startsWith(`- [${symbol}]`));
@@ -42,7 +42,7 @@ function reorderCheckboxesInList(inputText: string) {
     logger.debug(reorderedCheckboxes.length, "out of", allCheckboxes.length, "checkboxes rearranged");
 
     const reorderedText = inputText.replace(
-        checkboxPattern,
+        CHECKBOX_REGEX,
         () => reorderedCheckboxes.shift() || "",
     );
   
@@ -51,13 +51,10 @@ function reorderCheckboxesInList(inputText: string) {
 
 function reorderCheckboxesInFile(inputText: string) {
     //logger.debug("INPUT", inputText)
-    const checkboxListPattern = /^- .+(\n[ \t]*- .*)*$/gm;
-    const extraNewLine = /(\n{2,})(?=- \[[x\s!B/]\])/g;
-
     const reorderedText = inputText
-        .replace(extraNewLine, '\n')
+        .replace(EXTRA_NEWLINE_BETWEEN_TASKS_REGEX, '\n')
         .replace(
-            checkboxListPattern,
+            CHECKBOX_LIST_REGEX,
             reorderCheckboxesInList
         );
     //logger.debug("OUTPUT", reorderedText)

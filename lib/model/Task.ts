@@ -5,6 +5,7 @@ import Comparable from "./Comparable"
 import ToDoTask from "./ToDoTask";
 import { statusToSymbolObj, symbolToStatusObj } from "./TaskStatus";
 import { priorityToSymbol, symbolToPriority } from "./TaskPriority";
+import { TASK_CHECK_REGEX } from "./TaskRegex";
 
 const logger = new Logger("Task")
 export default class Task implements Comparable{
@@ -45,10 +46,10 @@ export default class Task implements Comparable{
             body: {
                 content: priorityToSymbol(this.priority)
             },
-            dueDateTime: {
+            dueDateTime: this.dueDate !== "" ? {
                 dateTime: `${this.dueDate}T${this.dueTime}`,
                 timeZone: "America/New_York"
-            }
+            } : undefined
         } as ToDoTask
     }
 
@@ -60,6 +61,7 @@ export default class Task implements Comparable{
         this.dueDate = obj.due ?? ""
         this.dueTime = obj.time ? DateTimeUtils.extractTimeFromString(obj.time) : (obj.due ? DateTimeUtils.MIDNIGHT : "")
         this.priority = obj.priority ?? ""
+        this.id = obj.id ?? ""
     }
 
     setTaskPropertiesWithObject(taskObject: ToDoTask){
@@ -74,14 +76,14 @@ export default class Task implements Comparable{
             //logger.warn("no datetime parsing", this, e)
         }
     }
-    
+
     static parseDateTime(dateTime: string){
         const splitDateTime =  dateTime.replace("Z", "").split("T")
         return {date: splitDateTime[0], time: splitDateTime[1]}
     }
 
     static isLineATask(line: string){
-        const match = /-\s\[(\s|\/|x|B|!)\] (.*)/.exec(line)
+        const match = TASK_CHECK_REGEX.exec(line)
         if(match){
             return {
                 status: match[1],
@@ -94,7 +96,7 @@ export default class Task implements Comparable{
     }
 
     static lineToTask(line: string){
-        const match = /-\s\[(\s|\/|x|B|!)\] (.*)/.exec(line)
+        const match = TASK_CHECK_REGEX.exec(line)
         return {
             status: match ? match[1] : "",
             text: match ? match[2] : ""
@@ -114,7 +116,21 @@ export default class Task implements Comparable{
         }
     }
 
-    static parseTextToObject(text: string): {title: string, due?: string, time?: string, priority?: string } {
+    isSimilar(line: string){
+        if(!Task.isLineATask(line)){
+            return false;
+        }
+        const task = new Task(this.parent, line, this.modifiedTime)
+        task.id = this.id
+        return this.hasSameProperties(task);
+    }
+
+    toText(){
+        const priorityStr = symbolToPriority(this.priority) !== "normal" ? ` [priority:: ${symbolToPriority(this.priority)}] ` : " "
+        return `- [${this.status}] ${this.title} [due:: ${this.dueDate}] [time:: ${DateTimeUtils.stringToMomentHoursMinutes(this.dueTime)}]${priorityStr}[id:: ${this.id}]`
+    }
+
+    static parseTextToObject(text: string): {title: string, due?: string, time?: string, priority?: string, id?: string } {
         const due = this.metatagExtractor("due", text) 
         text = text.replace(due.text, "")
 
@@ -124,6 +140,9 @@ export default class Task implements Comparable{
         const priority = this.metatagExtractor("priority", text)
         text = text.replace(priority.text, "")
 
+        const id = this.metatagExtractor("id", text)
+        text = text.replace(id.text, "")
+
         text = text.trim()
         text = text.replace(/\s\s+/g, ' ')
 
@@ -131,7 +150,8 @@ export default class Task implements Comparable{
             title: text,
             ...due.extraction,
             ...time.extraction,
-            ...priority.extraction
+            ...priority.extraction,
+            ...id.extraction
         };
     }
 

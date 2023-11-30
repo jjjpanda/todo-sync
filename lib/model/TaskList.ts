@@ -53,8 +53,8 @@ export default class TaskList implements Comparable{
 
     hasSameProperties(taskList: TaskList): boolean{
         return (
-            this.name !== taskList.name &&
-            this.group !== taskList.group
+            this.name === taskList.name &&
+            this.group === taskList.group
         )
     }
 

@@ -14,6 +14,10 @@ export default class DateTimeUtils {
         return "";
     }
 
+    static stringToMomentHoursMinutes(time: string){
+      return moment(time, "HH:mm:ss.SSSSSS").format('h:mm a')
+    }
+
     static currentDateTimeString(){
       return moment().format('YYYY-MM-DDTHH:mm:ss');;
     }

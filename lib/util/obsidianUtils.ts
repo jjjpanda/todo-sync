@@ -13,8 +13,6 @@ export default class ObsidianUtils {
 	private newCardTemplateContents: string;
 	private newCardTemplatePath: string;
 
-	private yamlRegex = /^---.*?---\n(.*?)($|---)/s;
-
 	constructor(app: App, newCardTemplatePath: string) {
 		this.app = app;
 		this.fileSystem = this.app.vault.adapter as FileSystemAdapter;
