@@ -15,19 +15,9 @@ const priorityToSymbolMap: PriorityMapping = Object.fromEntries(
 );
 
 export function symbolToPriority(symbol?: string): string{
-    if(symbol && symbol.length !== 0){
-        return symbolToPriorityMap[symbol]
-    }
-    else{
-        return "normal"
-    }
+    return symbolToPriorityMap[symbol] ?? "normal"
 }
 
 export function priorityToSymbol(priority: string): string{
-    if(priority === "normal"){
-        return ""
-    }
-    else{
-        return priorityToSymbolMap[priority]
-    }
+    return priorityToSymbolMap[priority] ?? ""
 }

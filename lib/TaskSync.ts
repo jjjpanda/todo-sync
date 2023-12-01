@@ -8,6 +8,9 @@ import Logger from "./util/logger"
 import ToDoSettings from "./model/ToDoSettings";
 import GraphClient from "./util/graphClient";
 import {App, TAbstractFile} from "obsidian"
+import Delta from "./model/Delta";
+import TaskList from "./model/TaskList";
+import Task from "./model/Task";
 
 const logger = new Logger("TaskSync")
 export default class TaskSync {
@@ -15,12 +18,16 @@ export default class TaskSync {
     taskManager: TaskManager;
     server: MSAuthServer;
     toDoManager: ToDoManager;
+    running: boolean;
+    knownDeltaForTaskLists = new Delta<TaskList>();
+    knownDeltaForTask = new Delta<Task>();
     
     constructor(app: App, settings: ToDoSettings){
         this.obsidianUtils = new ObsidianUtils(app, settings.NEW_CARD_TEMPLATE)
         this.taskManager = new TaskManager(this.obsidianUtils, settings.TASK_FOLDER)
         this.toDoManager = new ToDoManager()
         this.server = new MSAuthServer(settings)
+        this.running = false
     }
 
     async syncCards() {
@@ -31,12 +38,24 @@ export default class TaskSync {
         return this.taskManager.kanbanCards
     }
 
-    setGraphClient(graphClient: GraphClient){
+    setGraphClient(graphClient: GraphClient | null){
         this.toDoManager.setGraphClient(graphClient)
     }
     
+    async assureNoResolutionProcessCollision() {
+        while(this.running){
+            await sleep(50);
+        }
+        this.running = true
+    }
 
-    async initialResolution() {
+    resetKnownDeltas() {
+        this.knownDeltaForTask = new Delta<Task>();
+        this.knownDeltaForTaskLists = new Delta<TaskList>();
+    }
+
+    async resolution() {
+        await this.assureNoResolutionProcessCollision();
         logger.info("beginning initial resolution")
         const taskLists = await this.obsidianUtils.parseTasks(this.taskManager.kanbanCards)
         logger.debug("task lists", taskLists)
@@ -45,13 +64,15 @@ export default class TaskSync {
 
         let taskListDelta = DeltaResolver.getTaskListDeltas(
             taskLists, 
-            todoLists
+            todoLists,
+            this.knownDeltaForTaskLists
         )
         logger.info("tasklist delta", taskListDelta)
 
         let taskDelta = DeltaResolver.getTaskDeltas(
             taskLists.map(list => list.tasks).flat(), 
-            todoLists.map(list => list.tasks).flat()
+            todoLists.map(list => list.tasks).flat(),
+            this.knownDeltaForTask
         )
         logger.info("task delta", taskDelta)
 
@@ -65,23 +86,19 @@ export default class TaskSync {
         // taskDelta = await this.taskManager.resolveTaskDelta(taskDelta)
         // logger.info("task delta resolved", taskDelta)
 
+        this.resetKnownDeltas()
+
         logger.info("initial resolution complete")
     }
 
-    async periodicResolution(){
-        
-    }
-
     async queueAdditionToRemote(file: TAbstractFile) {
-
+        //await this.syncCards()
     }
 
     async queueModificationToRemote(file: TAbstractFile, oldPath: string) {
-
     }
 
     async queueDeletionToRemote(file: TAbstractFile) {
-
     }
 
 }

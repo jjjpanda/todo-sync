@@ -9,7 +9,7 @@ import Throttler from "./Throttler"
 const logger = new Logger("GraphClient");
 export default class GraphClient {
   client;
-  throttler = new Throttler(5);
+  throttler = new Throttler(3);
 
   constructor(msalClient, userId, settings: ToDoSettings) {
     if (!msalClient || !userId) {
@@ -58,8 +58,6 @@ export default class GraphClient {
   }
 
   async getUserTasksLists(): Promise<MicrosoftGraphResponseCollection<ToDoTaskList[]>> {
-    await this.throttler.safeToCall();
-
     let result = {
       value: [] as ToDoTaskList[]
     } as MicrosoftGraphResponseCollection<ToDoTaskList[]>
@@ -70,6 +68,7 @@ export default class GraphClient {
     } as MicrosoftGraphResponseCollection<ToDoTaskList[]>
 
     while(!!lists["@odata.nextLink"]){
+      await this.throttler.safeToCall();
       lists = await this.client
         .api(lists["@odata.nextLink"])
         .get() as MicrosoftGraphResponseCollection<ToDoTaskList[]>;
@@ -111,8 +110,6 @@ export default class GraphClient {
   }
   
   async getUserTaskListItems(listId: string): Promise<MicrosoftGraphResponseCollection<ToDoTask[]>> {
-    await this.throttler.safeToCall();
-
     let result = {
       value: [] as ToDoTask[]
     } as MicrosoftGraphResponseCollection<ToDoTask[]>
@@ -122,7 +119,8 @@ export default class GraphClient {
       "@odata.nextLink": `/me/todo/lists/${listId}/tasks/delta`
     } as MicrosoftGraphResponseCollection<ToDoTask[]>
 
-    while(tasks["@odata.nextLink"]){
+    while(!!tasks["@odata.nextLink"]){
+      await this.throttler.safeToCall();
       tasks = await this.client
         .api(tasks["@odata.nextLink"])
         .get() as MicrosoftGraphResponseCollection<ToDoTask[]>;

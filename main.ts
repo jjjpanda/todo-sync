@@ -26,6 +26,7 @@ export default class ToDoPlugin extends Plugin {
 		this.taskSync = new TaskSync(this.app, this.settings);
 		
 		try{
+			await this.taskSync.server.stop()
 			await this.taskSync.server.start()
 		} catch (err){
 			this.throwErrorAndQuit(new Error(err), `Server didn't start`)
@@ -99,35 +100,33 @@ export default class ToDoPlugin extends Plugin {
 
 			this.app.workspace.onLayoutReady(async () => {
 				
-				await this.taskSync.initialResolution()
+				await this.taskSync.resolution()
 
 				//COMMENTS FROM HERE
 				this.registerInterval(
 					window.setInterval(
 						async () => {
-							await this.taskSync.periodicResolution()
+							await this.taskSync.resolution()
 						}, 
-						Number(this.settings.SYNC_RATE)
+						Number(this.settings.SYNC_RATE) * 1000
 					)
 				)
 
 				this.registerEvent(this.app.vault.on('create', async (file) => {
-					logger.info('created', file)
-					this.taskSync.queueAdditionToRemote(file)
-					await this.taskSync.syncCards()
+					logger.debug('created', file)
+					await this.taskSync.queueAdditionToRemote(file)
 				}))
 				this.registerEvent(this.app.vault.on('rename', async (file, oldPath) => {
-					logger.info('renamed', file, "from", oldPath)
-					this.taskSync.queueModificationToRemote(file, oldPath)
-					await this.taskSync.syncCards()
+					logger.debug('renamed', file, "from", oldPath)
+					await this.taskSync.queueModificationToRemote(file, oldPath)
 				}))
 				this.registerEvent(this.app.vault.on('delete', async (file) => {
-					logger.info('deleted', file)
-					this.taskSync.queueDeletionToRemote(file)
-					await this.taskSync.syncCards()
+					logger.debug('deleted', file)
+					await this.taskSync.queueDeletionToRemote(file)
 				}))
 
 				this.registerEvent(this.app.vault.on('modify', async (file) => {
+					logger.debug('modified', file)
 					const cardIndex = this.taskSync.taskManager.findKanbanCard(file)
 					if(cardIndex != -1){
 						logger.info(file)

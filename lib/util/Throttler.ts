@@ -25,9 +25,11 @@ export default class Throttler{
     }
 
     async safeToCall() {
-        await new Promise<void>(resolve => {
+        await new Promise<void>(async resolve => {
             if(this.calls >= this.limit){
-                while(this.inThePresent()){}
+                while(this.inThePresent()){
+                    await sleep(50)
+                }
                 this.reset()
                 resolve();
             }

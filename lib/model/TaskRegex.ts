@@ -8,3 +8,5 @@ export const TASKLIST_ID_REGEX = /<!---(.*)--->/;
 
 export const TASK_CHECK_REGEX = /-\s\[(\s|\/|x|B|!)\] (.*)/
 
+export const SPACES_AND_NEWLINES = /[\n\r\s]*/g
+

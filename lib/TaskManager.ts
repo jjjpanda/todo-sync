@@ -5,6 +5,7 @@ import Logger from "./util/logger"
 import Delta from "./model/Delta";
 import ObsidianUtils from "./util/obsidianUtils";
 import { CHECKBOX_REGEX, EXTRA_NEWLINE_BETWEEN_TASKS_REGEX, TASKLIST_ID_REGEX } from "./model/TaskRegex";
+import { TAbstractFile, TFile } from "obsidian";
 const logger = new Logger("TaskManager")
 export default class TaskManager {
     folder: string;
@@ -16,7 +17,7 @@ export default class TaskManager {
         this.folder = folder;
     }
 
-    findKanbanCard(file) {
+    findKanbanCard(file: TAbstractFile): number {
         if(!this.kanbanCards){
             return -1
         }
@@ -144,7 +145,7 @@ export default class TaskManager {
                         contents = contents.replace(taskLine, task.toText())
                         break;
                     case "del":
-                        contents = contents.replace(` [id:: ${task.id}]`, "").replace(EXTRA_NEWLINE_BETWEEN_TASKS_REGEX, "\n")
+                        contents = contents.replace(` %%[id:: ${task.id}]%%`, "").replace(EXTRA_NEWLINE_BETWEEN_TASKS_REGEX, "\n")
                         break;
                 }
             }

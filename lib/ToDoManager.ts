@@ -16,7 +16,7 @@ export default class ToDoManager {
         this.graphClient = null
     }
 
-    setGraphClient(graphClient: GraphClient){
+    setGraphClient(graphClient: GraphClient | null){
         this.graphClient = graphClient;
     }
     

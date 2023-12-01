@@ -5,7 +5,7 @@ import Comparable from "./Comparable"
 import ToDoTask from "./ToDoTask";
 import { statusToSymbolObj, symbolToStatusObj } from "./TaskStatus";
 import { priorityToSymbol, symbolToPriority } from "./TaskPriority";
-import { TASK_CHECK_REGEX } from "./TaskRegex";
+import { SPACES_AND_NEWLINES, TASK_CHECK_REGEX } from "./TaskRegex";
 
 const logger = new Logger("Task")
 export default class Task implements Comparable{
@@ -67,7 +67,7 @@ export default class Task implements Comparable{
     setTaskPropertiesWithObject(taskObject: ToDoTask){
         this.title = taskObject.title
         this.status = statusToSymbolObj[taskObject.status]
-        this.priority = symbolToPriority(taskObject.body?.content)
+        this.priority = symbolToPriority(taskObject.body?.content.trim().replace(SPACES_AND_NEWLINES, ""))
         try{
             const {date, time} = Task.parseDateTime(taskObject.dueDateTime.dateTime)
             this.dueDate = date
@@ -104,7 +104,7 @@ export default class Task implements Comparable{
     }
 
     static metatagExtractor(field: string, text: string){
-        const regex = `\\[\\s*${field}::\\s*(.*?)\\s*\\]`;
+        const regex = `(?:[%]?){2}\\[\\s*${field}::\\s*(.*?)\\s*\\](?:[%]?){2}`;
         const extraction = {} as {[key: string]: string}
         const match = new RegExp(regex).exec(text);
         if (match) {
@@ -126,8 +126,11 @@ export default class Task implements Comparable{
     }
 
     toText(){
-        const priorityStr = symbolToPriority(this.priority) !== "normal" ? ` [priority:: ${symbolToPriority(this.priority)}] ` : " "
-        return `- [${this.status}] ${this.title} [due:: ${this.dueDate}] [time:: ${DateTimeUtils.stringToMomentHoursMinutes(this.dueTime)}]${priorityStr}[id:: ${this.id}]`
+        const space = " "
+        const dueStr = this.dueDate.length > 0 ? ` [due:: ${this.dueDate}]` : space
+        const timeStr = this.dueTime.length > 0 && this.dueTime !== DateTimeUtils.MIDNIGHT ? ` [time:: ${DateTimeUtils.stringToMomentHoursMinutes(this.dueTime)}]` : space
+        const priorityStr = this.priority !== "" ? ` [priority:: ${this.priority}]` : space
+        return `- [${this.status}] %%[id:: ${this.id}]%%${timeStr} ${this.title}${priorityStr}${dueStr}`
     }
 
     static parseTextToObject(text: string): {title: string, due?: string, time?: string, priority?: string, id?: string } {

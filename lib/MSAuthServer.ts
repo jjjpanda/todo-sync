@@ -171,8 +171,13 @@ export default class MSAuthServer {
 	}
 
 	stop() {
-		this._server.close();
-		logger.info(`server stopped`);
+		if(this._server){
+			this._server.close();
+			logger.info(`server stopped`);
+		}
+		else{
+			logger.warn("no server to stop")
+		}
 	}
 }
 

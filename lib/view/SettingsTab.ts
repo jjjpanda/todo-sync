@@ -78,7 +78,7 @@ export default class SettingsTab extends PluginSettingTab {
 
 		new Setting(containerEl)
 			.setName('Sync Rate')
-			.setDesc('How often you want tasks to be synced with Microsoft To-Do (in milliseconds)')
+			.setDesc('How often you want tasks to be synced with Microsoft To-Do (in seconds)')
 			.addText(text => text
 				.setPlaceholder('10000')
 				.setValue(this.plugin.settings.SYNC_RATE)
