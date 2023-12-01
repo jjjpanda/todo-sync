@@ -12,7 +12,6 @@ export default class Task implements Comparable{
     title = "";
     status = "";
     dueDate = "";
-    dueTime = "";
     priority = "";
     modifiedTime = 0;
     id = "";
@@ -25,7 +24,6 @@ export default class Task implements Comparable{
             this.title = "";
             this.status = "";
             this.dueDate = "";
-            this.dueTime = "";
             this.priority = "";
             this.id = ""
             return
@@ -47,7 +45,7 @@ export default class Task implements Comparable{
                 content: priorityToSymbol(this.priority)
             },
             dueDateTime: this.dueDate !== "" ? {
-                dateTime: `${this.dueDate}T${this.dueTime}`,
+                dateTime: `${this.dueDate}T${DateTimeUtils.MIDNIGHT}`,
                 timeZone: "America/New_York"
             } : undefined
         } as ToDoTask
@@ -59,7 +57,6 @@ export default class Task implements Comparable{
         this.status = status;
         this.title = obj.title
         this.dueDate = obj.due ?? ""
-        this.dueTime = obj.time ? DateTimeUtils.extractTimeFromString(obj.time) : (obj.due ? DateTimeUtils.MIDNIGHT : "")
         this.priority = obj.priority ?? ""
         this.id = obj.id ?? ""
     }
@@ -69,17 +66,16 @@ export default class Task implements Comparable{
         this.status = statusToSymbolObj[taskObject.status]
         this.priority = symbolToPriority(taskObject.body?.content.trim().replace(SPACES_AND_NEWLINES, ""))
         try{
-            const {date, time} = Task.parseDateTime(taskObject.dueDateTime.dateTime)
+            const date = Task.parseDate(taskObject.dueDateTime.dateTime)
             this.dueDate = date
-            this.dueTime = time
         } catch(e){
             //logger.warn("no datetime parsing", this, e)
         }
     }
 
-    static parseDateTime(dateTime: string){
+    static parseDate(dateTime: string){
         const splitDateTime =  dateTime.replace("Z", "").split("T")
-        return {date: splitDateTime[0], time: splitDateTime[1]}
+        return splitDateTime[0]
     }
 
     static isLineATask(line: string){
@@ -128,17 +124,13 @@ export default class Task implements Comparable{
     toText(){
         const space = " "
         const dueStr = this.dueDate.length > 0 ? ` [due:: ${this.dueDate}]` : space
-        const timeStr = this.dueTime.length > 0 && this.dueTime !== DateTimeUtils.MIDNIGHT ? ` [time:: ${DateTimeUtils.stringToMomentHoursMinutes(this.dueTime)}]` : space
         const priorityStr = this.priority !== "" ? ` [priority:: ${this.priority}]` : space
-        return `- [${this.status}] %%[id:: ${this.id}]%%${timeStr} ${this.title}${priorityStr}${dueStr}`
+        return `- [${this.status}] %%[id:: ${this.id}]%% ${this.title}${priorityStr}${dueStr}`
     }
 
-    static parseTextToObject(text: string): {title: string, due?: string, time?: string, priority?: string, id?: string } {
+    static parseTextToObject(text: string): {title: string, due?: string, priority?: string, id?: string } {
         const due = this.metatagExtractor("due", text) 
         text = text.replace(due.text, "")
-
-        const time = this.metatagExtractor("time", text)
-        text = text.replace(time.text, "")
 
         const priority = this.metatagExtractor("priority", text)
         text = text.replace(priority.text, "")
@@ -152,7 +144,6 @@ export default class Task implements Comparable{
         return {
             title: text,
             ...due.extraction,
-            ...time.extraction,
             ...priority.extraction,
             ...id.extraction
         };
@@ -171,7 +162,6 @@ export default class Task implements Comparable{
     hasSameProperties(task: Task): boolean{
         return (
             this.dueDate === task.dueDate && 
-            this.dueTime === task.dueTime &&
             this.priority === task.priority &&
             this.title === task.title &&
             this.status === task.status
@@ -191,7 +181,6 @@ export default class Task implements Comparable{
         title?: string;
         status?: string;
         dueDate?: string;
-        dueTime?: string;
         priority?: string;
         modifiedTime?: number;
         id?: string;
@@ -207,7 +196,6 @@ export default class Task implements Comparable{
         result.title = obj.title ?? "";
         result.status = obj.status ?? "";
         result.dueDate = obj.dueDate ?? "";
-        result.dueTime = obj.dueTime ?? "";
         result.priority = obj.priority ?? "";
 
         return result;
