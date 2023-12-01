@@ -5,7 +5,7 @@ import Logger from "./util/logger"
 import Delta from "./model/Delta";
 import ObsidianUtils from "./util/obsidianUtils";
 import { CHECKBOX_REGEX, EXTRA_NEWLINE_BETWEEN_TASKS_REGEX, TASKLIST_ID_REGEX } from "./model/TaskRegex";
-import { TAbstractFile, TFile } from "obsidian";
+import { TAbstractFile } from "obsidian";
 const logger = new Logger("TaskManager")
 export default class TaskManager {
     folder: string;

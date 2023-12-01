@@ -76,19 +76,20 @@ export default class TaskSync {
         )
         logger.info("task delta", taskDelta)
 
-        // taskListDelta = await this.toDoManager.resolveListDelta(taskListDelta)
-        // logger.debug("task list delta resolved to remote", taskListDelta)
-        // taskListDelta = await this.taskManager.resolveListDelta(taskListDelta)
-        // logger.info("task list delta resolved", taskListDelta)
+        taskListDelta = await this.toDoManager.resolveListDelta(taskListDelta)
+        logger.debug("task list delta resolved to remote", taskListDelta)
+        taskListDelta = await this.taskManager.resolveListDelta(taskListDelta)
+        logger.info("task list delta resolved", taskListDelta)
 
-        // taskDelta = await this.toDoManager.resolveTaskDelta(taskDelta)
-        // logger.debug("task delta resolved to remote", taskDelta)
-        // taskDelta = await this.taskManager.resolveTaskDelta(taskDelta)
-        // logger.info("task delta resolved", taskDelta)
+        taskDelta = await this.toDoManager.resolveTaskDelta(taskDelta)
+        logger.debug("task delta resolved to remote", taskDelta)
+        taskDelta = await this.taskManager.resolveTaskDelta(taskDelta)
+        logger.info("task delta resolved", taskDelta)
 
         this.resetKnownDeltas()
 
         logger.info("initial resolution complete")
+        this.running = false;
     }
 
     async queueAdditionToRemote(file: TAbstractFile) {

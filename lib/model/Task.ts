@@ -57,7 +57,7 @@ export default class Task implements Comparable{
         this.status = status;
         this.title = obj.title
         this.dueDate = obj.due ?? ""
-        this.priority = obj.priority ?? ""
+        this.priority = obj.priority ?? "normal"
         this.id = obj.id ?? ""
     }
 
@@ -196,7 +196,7 @@ export default class Task implements Comparable{
         result.title = obj.title ?? "";
         result.status = obj.status ?? "";
         result.dueDate = obj.dueDate ?? "";
-        result.priority = obj.priority ?? "";
+        result.priority = obj.priority ?? "normal";
 
         return result;
     }
