@@ -64,7 +64,7 @@ export default class TaskManager {
 
         const newCardContents = await this.obsidianUtils.getNewCardContents()
     
-        logger.warn("resolving List Delta", this.folder, delta)
+        logger.debug("resolving List Delta", this.folder, delta)
         // toOrigin.add
         for(let list of delta.toOrigin.add){
             await this.obsidianUtils.getVault().create(list.pathFrom(this.folder), `${newCardContents}\n<!---${list.id}--->`)
@@ -122,7 +122,7 @@ export default class TaskManager {
         delta.toOrigin.modify.forEach(addToMapping("mod"))
         delta.toOrigin.removeID.forEach(addToMapping("del"))
 
-        logger.warn("resolving Task Delta", this.folder, delta, "with mapping", taskListMapping)
+        logger.debug("resolving Task Delta", this.folder, delta, "with mapping", taskListMapping)
 
         for(const path in taskListMapping){
             const taskList = taskListMapping[path];

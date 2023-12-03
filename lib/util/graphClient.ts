@@ -53,7 +53,7 @@ export default class GraphClient {
       .api('/me')
       .select('displayName,mail,userPrincipalName')
       .get();
-    logger.warn(user)
+    logger.debug(user)
     return user;
   }
 
@@ -80,7 +80,9 @@ export default class GraphClient {
       roundCount++
     } 
 
-    logger.warn("lists", result, "after rounds:", roundCount)
+    if(roundCount > 1){
+      logger.debug("lists", result, "after rounds:", roundCount)
+    }
     
     return result;
   }
@@ -131,7 +133,9 @@ export default class GraphClient {
       roundCount++
     } 
 
-    logger.warn("tasks", result, "after rounds:", roundCount)
+    if(roundCount > 1){
+      logger.debug("tasks", result, "after rounds:", roundCount)
+    }
 
     return result;
   }

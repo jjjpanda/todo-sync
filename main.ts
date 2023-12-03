@@ -178,6 +178,7 @@ export default class ToDoPlugin extends Plugin {
 
 	async saveSettings() {
 		await this.saveData(this.settings);
+		await this.unload()
 		await this.onload()
 	}
 }

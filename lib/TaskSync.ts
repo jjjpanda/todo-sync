@@ -109,13 +109,22 @@ export default class TaskSync {
             ProcessType.FETCH,
             async () => {
                 logger.info("beginning fetch");
-                
-                const taskLists = await this.obsidianUtils.parseTasks(this.taskManager.kanbanCards);
-                logger.debug("task lists", taskLists);
-                const todoLists = await this.toDoManager.getToDoTasks() ?? [];
-                logger.debug("todo lists", todoLists);
-                logger.debug("known deltas", this.knownDeltaForTaskLists, this.knownDeltaForTasks);
 
+                logger.debug("known deltas", this.knownDeltaForTaskLists, this.knownDeltaForTasks);
+                
+                let taskLists, todoLists;
+
+                try{
+                    taskLists = await this.obsidianUtils.parseTasks(this.taskManager.kanbanCards);
+                    logger.debug("task lists", taskLists);
+                    todoLists = await this.toDoManager.getToDoTasks() ?? [];
+                    logger.debug("todo lists", todoLists);    
+                } catch (e){
+                    logger.error(e)
+                    this.lastFetchFailed = true;
+                    return "⚠"
+                }
+                
                 let taskListDelta;
                 let taskDelta;
         
@@ -148,6 +157,7 @@ export default class TaskSync {
                 this.knownDeltaForTaskLists = taskListDelta;
                 this.knownDeltaForTasks = taskDelta
         
+                this.lastFetchFailed = false;
                 logger.info("fetch done");
         
                 if(taskDelta.isEmpty() && taskListDelta.isEmpty()){
@@ -202,9 +212,13 @@ export default class TaskSync {
         await this.runJobWithNoResolutionProcessCollision(
             ProcessType.CREATE,
             async () => {
-                logger.debug("starting analysis of creation of", file)
+                logger.debug("starting analysis | creation of", file)
                 //await this.syncCards()
+
+                //this.knownDeltaForTaskLists.toRemote.add.push
+                
                 // task list addition
+                logger.debug("finished analysis | creation of", file)
             }
         );
     }
@@ -214,8 +228,10 @@ export default class TaskSync {
         await this.runJobWithNoResolutionProcessCollision(
             ProcessType.RENAME,
             async () => {
-                logger.debug("starting analysis of rename of", oldPath)
+                logger.debug("starting analysis | rename of", oldPath)
+                //this.knownDeltaForTaskLists.toRemote.modify.push
                 // task list modification
+                logger.debug("finished analysis | rename of", oldPath, "to", file)
             }
         );
 					
@@ -233,7 +249,7 @@ export default class TaskSync {
         await this.runJobWithNoResolutionProcessCollision(
             ProcessType.MODIFY,
             async () => {
-                logger.debug("starting analysis of modify of", file)
+                logger.debug("starting analysis | modify of", file)
                 //assuming a cached, resolved taskLists/todoLists object
 
                 //check if file is in this.kanbancards
@@ -244,17 +260,26 @@ export default class TaskSync {
                 //compare to existing, corresponding tasks in the kanban card in the cached list
 
                 //add to known delta accordingly.
+                logger.debug("finished analysis | modify of", file)
             }
         );
     }
 
     async queueDeletionToRemote(file: TAbstractFile) {
-        logger.debug('deleted', file)
+        const cardIndex = this.taskManager.findKanbanCard(file)
+        if(cardIndex != -1){        
+            logger.debug('deleted', file)
+        }
+        else{
+            return; //not kanban card => don't care
+        }
         await this.runJobWithNoResolutionProcessCollision(
             ProcessType.DELETE,
             async () => {
-                logger.debug("starting analysis of delete of", file)
+                logger.debug("starting analysis | delete of", file)
+                //this.knownDeltaForTaskLists.toRemote.delete.push
                 // task list deletion
+                logger.debug("finished analysis | delete of", file)
             }
         )
     }
