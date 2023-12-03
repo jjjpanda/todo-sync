@@ -124,7 +124,7 @@ export default class Task implements Comparable{
     toText(){
         const space = " "
         const dueStr = this.dueDate.length > 0 ? ` [due:: ${this.dueDate}]` : space
-        const priorityStr = this.priority !== "" ? ` [priority:: ${this.priority}]` : space
+        const priorityStr = (this.priority !== "" && this.priority !== "normal") ? ` [priority:: ${this.priority}]` : space
         return `- [${this.status}] %%[id:: ${this.id}]%% ${this.title}${priorityStr}${dueStr}`
     }
 

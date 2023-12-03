@@ -28,14 +28,14 @@ export default class GraphClient {
   
           if (account) {
             const scopes = settings.OAUTH_SCOPES || 'https://graph.microsoft.com/.default';
-            logger.debug("SCOPES", scopes.split(","))
+            //logger.debug("SCOPES", scopes.split(","))
             const response = await msalClient.acquireTokenSilent({
               scopes: scopes.split(','),
               redirectUri: settings.OAUTH_REDIRECT_URI,
               account: account
             });
 
-            logger.debug("TOKEN", response)
+            //logger.debug("TOKEN", response)
 
             done(null, response.accessToken);
           }

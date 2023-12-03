@@ -5,7 +5,7 @@ import Logger from "./util/logger"
 import Delta from "./model/Delta";
 import ObsidianUtils from "./util/obsidianUtils";
 import { CHECKBOX_REGEX, EXTRA_NEWLINE_BETWEEN_TASKS_REGEX, TASKLIST_ID_REGEX } from "./model/TaskRegex";
-import { TAbstractFile } from "obsidian";
+import { TAbstractFile, TFile } from "obsidian";
 const logger = new Logger("TaskManager")
 export default class TaskManager {
     folder: string;
@@ -39,8 +39,7 @@ export default class TaskManager {
         });
         logger.debug("found files", filesInFolder)
 
-        // Read all files and filter based on the tag
-        const kanbanCardsUnfiltered = await Promise.all(filesInFolder.map(file => this.obsidianUtils.getFileContents(file).then(content => {
+        const fileIfKanbanCard = (file: TFile) => this.obsidianUtils.getFileContents(file).then(content => {
             // Parse YAML frontmatter
             let contentSplit = content.split('---');
             let frontMatter = contentSplit[1];
@@ -52,7 +51,10 @@ export default class TaskManager {
             }
             // Check if content contains the specified tag not in YAML
             return content.includes(`#${tag}`) ? file : null;
-        })))
+        })
+
+        // Read all files and filter based on the tag
+        const kanbanCardsUnfiltered = await Promise.all(filesInFolder.map(fileIfKanbanCard))
 
         this.kanbanCards = kanbanCardsUnfiltered.filter(file => !!file)
         logger.info("kanban cards file list", this.kanbanCards)

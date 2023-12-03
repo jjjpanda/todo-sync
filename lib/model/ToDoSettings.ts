@@ -7,7 +7,7 @@ export default interface ToDoSettings {
 	PORT: string;
 	TASK_FOLDER: string;
 	NEW_CARD_TEMPLATE: string;
-	SYNC_RATE: string;
+	FETCH_RATE: string;
 }
 
 export const DEFAULT_SETTINGS: ToDoSettings = {
@@ -19,5 +19,5 @@ export const DEFAULT_SETTINGS: ToDoSettings = {
 	PORT: "3000",
 	TASK_FOLDER: "/",
 	NEW_CARD_TEMPLATE: "",
-	SYNC_RATE: "10000"
+	FETCH_RATE: "60000"
 };

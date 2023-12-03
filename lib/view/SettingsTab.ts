@@ -77,13 +77,13 @@ export default class SettingsTab extends PluginSettingTab {
 				}));
 
 		new Setting(containerEl)
-			.setName('Sync Rate')
-			.setDesc('How often you want tasks to be synced with Microsoft To-Do (in seconds)')
+			.setName('Fetch Rate')
+			.setDesc('How often you want tasks to be fetched from Microsoft To-Do (in seconds)')
 			.addText(text => text
 				.setPlaceholder('10000')
-				.setValue(this.plugin.settings.SYNC_RATE)
+				.setValue(this.plugin.settings.FETCH_RATE)
 				.onChange(async (value) => {
-					this.plugin.settings.SYNC_RATE = value;
+					this.plugin.settings.FETCH_RATE = value;
 					await this.plugin.saveSettings();
 				}));
 

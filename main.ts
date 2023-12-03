@@ -12,7 +12,9 @@ const logger: Logger = new Logger("PluginClass");
 export default class ToDoPlugin extends Plugin {
 	settings: ToDoSettings;
 	taskFileSelector: HTMLElement;
-	taskReorderButton: HTMLElement
+	taskReorderButton: HTMLElement;
+	taskSyncStatus: HTMLElement;
+	taskSyncButton: HTMLElement;
 	private taskSync: TaskSync
 	
 	async onload() {
@@ -34,6 +36,16 @@ export default class ToDoPlugin extends Plugin {
 		
 		const statusBarNameFromMS = this.addStatusBarItem();
 		statusBarNameFromMS.setText("Loading...")
+
+		const syncButtonOnStatusBar = this.addStatusBarItem();
+		syncButtonOnStatusBar.createEl("div", {attr: {id: "syncButtonOnStatusBar"}})
+		const possibleTaskSyncButton = document.getElementById("syncButtonOnStatusBar") 
+		if(possibleTaskSyncButton === null){
+			this.throwErrorAndQuit(new Error("Set Up Error"), "No Sync Button on Status Bar")
+		}
+		else{
+			this.taskSyncStatus = possibleTaskSyncButton
+		}
 		
 		try{
 			await this.taskSync.server.signIn(this.app.workspace)
@@ -91,6 +103,7 @@ export default class ToDoPlugin extends Plugin {
 
 			const user = this.taskSync.server.getUsers(session.userId)
 			statusBarNameFromMS.setText(user.displayName);
+			this.taskSyncStatus.innerHTML = "⟳ fetching..."
 
 			const graphClient = this.taskSync.server.getGraphClient();
 			if(!graphClient){
@@ -99,41 +112,46 @@ export default class ToDoPlugin extends Plugin {
 			this.taskSync.setGraphClient(graphClient);
 
 			this.app.workspace.onLayoutReady(async () => {
-				
-				await this.taskSync.resolution()
-
-				//COMMENTS FROM HERE
-				this.registerInterval(
-					window.setInterval(
-						async () => {
-							await this.taskSync.resolution()
-						}, 
-						Number(this.settings.SYNC_RATE) * 1000
-					)
-				)
 
 				this.registerEvent(this.app.vault.on('create', async (file) => {
-					logger.debug('created', file)
 					await this.taskSync.queueAdditionToRemote(file)
 				}))
 				this.registerEvent(this.app.vault.on('rename', async (file, oldPath) => {
-					logger.debug('renamed', file, "from", oldPath)
-					await this.taskSync.queueModificationToRemote(file, oldPath)
+					await this.taskSync.queueAbstractModificationFromRename(file, oldPath)
 				}))
 				this.registerEvent(this.app.vault.on('delete', async (file) => {
-					logger.debug('deleted', file)
 					await this.taskSync.queueDeletionToRemote(file)
 				}))
-
 				this.registerEvent(this.app.vault.on('modify', async (file) => {
-					logger.debug('modified', file)
-					const cardIndex = this.taskSync.taskManager.findKanbanCard(file)
-					if(cardIndex != -1){
-						logger.info(file)
-						this.taskSync.queueModificationToRemote(file, file.path)
-					}
+					await this.taskSync.queueModificationToRemoteFromWrite(file)
 				}));
-				
+
+				this.taskSyncStatus.innerHTML = await this.taskSync.fetchDelta()
+
+				this.addCommand({
+					id: "sync-lists-and-tasks-command",
+					name: "Sync Tasks",
+					callback: async () => {
+						this.taskSyncStatus.innerHTML = await this.taskSync.syncTaskListsAndTasks()
+					}
+				})
+
+				this.taskSyncButton = this.addRibbonIcon(
+					'refresh-ccw',
+					"Sync Tasks",
+					async (evt) => {
+						this.taskSyncStatus.innerHTML = await this.taskSync.syncTaskListsAndTasks()
+					}
+				)
+
+				this.registerInterval(
+					window.setInterval(
+						async () => {
+							this.taskSyncStatus.innerHTML = await this.taskSync.fetchDelta()
+						}, 
+						Number(this.settings.FETCH_RATE) * 1000
+					)
+				)
 			})
 			
 		})

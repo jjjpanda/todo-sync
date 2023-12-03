@@ -34,10 +34,12 @@ export default class MSAuthServer {
 			system: {
 			  loggerOptions: {
 				loggerCallback: (loglevel, message, containsPii) => {
-				  if (!containsPii) logger.debug(loglevel, message);
+				  if (!containsPii) {
+					logger.debug(loglevel, message)
+				  };
 				},
 				piiLoggingEnabled: true,
-				logLevel: LogLevel.Verbose,
+				logLevel: LogLevel.Warning,
 			  }
 			}
 		  };

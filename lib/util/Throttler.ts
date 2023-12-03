@@ -35,7 +35,7 @@ export default class Throttler{
             }
             else{
                 this.addCall();
-                logger.warn(this.now, this.calls, "out of", this.limit)
+                //logger.warn(this.now, this.calls, "out of", this.limit)
                 resolve();
             }
         })
