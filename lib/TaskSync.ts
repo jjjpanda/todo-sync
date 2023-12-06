@@ -7,7 +7,7 @@ import MSAuthServer from "./MSAuthServer";
 import Logger from "./util/logger"
 import ToDoSettings from "./model/ToDoSettings";
 import GraphClient from "./util/graphClient";
-import {App, TAbstractFile} from "obsidian"
+import {App, Notice, TAbstractFile, TFile} from "obsidian"
 import Delta from "./model/Delta";
 import TaskList from "./model/TaskList";
 import Task from "./model/Task";
@@ -104,7 +104,17 @@ export default class TaskSync {
         this.knownDeltaForTaskLists = new Delta<TaskList>();
     }
 
-    async fetchDelta() {        
+    deltaStatus() {
+        const numberOfOriginChanges = this.knownDeltaForTasks.toOriginChangesCount() + this.knownDeltaForTaskLists.toOriginChangesCount();
+        const numberOfRemoteChanges = this.knownDeltaForTasks.toRemoteChangesCount() + this.knownDeltaForTaskLists.toRemoteChangesCount();
+        return `↓${numberOfOriginChanges} ↑${numberOfRemoteChanges}`
+    }
+
+    async fetchDelta() {    
+        while(!this.taskManager.kanbanCards){
+            logger.debug("waiting for kanban cards list to be not undefined")
+            await sleep(100)
+        }    
         return await this.runJobWithNoResolutionProcessCollision(
             ProcessType.FETCH,
             async () => {
@@ -117,6 +127,7 @@ export default class TaskSync {
                 try{
                     taskLists = await this.obsidianUtils.parseTasks(this.taskManager.kanbanCards);
                     logger.debug("task lists", taskLists);
+
                     todoLists = await this.toDoManager.getToDoTasks() ?? [];
                     logger.debug("todo lists", todoLists);    
                 } catch (e){
@@ -164,9 +175,7 @@ export default class TaskSync {
                     return "✓ synced";
                 }
                 else{
-                    const numberOfOriginChanges = taskDelta.toOriginChangesCount() + taskListDelta.toOriginChangesCount();
-                    const numberOfRemoteChanges = taskDelta.toRemoteChangesCount() + taskListDelta.toRemoteChangesCount();
-                    return `↓${numberOfOriginChanges} ↑${numberOfRemoteChanges}`
+                    return this.deltaStatus()
                 }
             }
         );
@@ -178,6 +187,7 @@ export default class TaskSync {
             async () => {
                 if(this.lastFetchFailed){
                     logger.warn("not starting sync, last FETCH failed")
+                    new Notice("not starting sync, last FETCH failed")
                     return;
                 }
 
@@ -207,49 +217,69 @@ export default class TaskSync {
         
     }
 
-    async queueAdditionToRemote(file: TAbstractFile) {
-        logger.debug('created', file)
-        await this.runJobWithNoResolutionProcessCollision(
+    async queueAdditionToRemote(abstractFile: TAbstractFile) {
+        if(!(await this.taskManager.isAbstractFileKanbanCard(abstractFile))){
+            return this.deltaStatus();//not kanban so idc
+        }
+        logger.debug('analysis created', abstractFile)
+        return await this.runJobWithNoResolutionProcessCollision(
             ProcessType.CREATE,
             async () => {
-                logger.debug("starting analysis | creation of", file)
-                //await this.syncCards()
+                logger.debug("starting analysis | creation of", abstractFile)
+        
+                const file = abstractFile as TFile
 
-                //this.knownDeltaForTaskLists.toRemote.add.push
+                this.taskManager.kanbanCards.push(file)
+                const contents = await this.obsidianUtils.getFileContents(file)
+                const tasklist = new TaskList(
+                    this.obsidianUtils.label(file),
+                    TaskManager.parseId(contents) ?? "",
+                    file.stat.mtime
+                )
+                tasklist.addTasks(
+                    contents
+                        .split("\n")
+                        .filter(line => Task.isLineATask(line) !== null)
+                        .map(taskLine => new Task(tasklist, taskLine, file.stat.mtime ?? 0))
+                )
+                this.knownDeltaForTaskLists.toRemote.add.push(tasklist)
                 
                 // task list addition
-                logger.debug("finished analysis | creation of", file)
+                logger.debug("finished analysis | creation of", abstractFile)
+
+                return this.deltaStatus()
             }
         );
     }
 
-    async queueAbstractModificationFromRename(file: TAbstractFile, oldPath: string) {
-        logger.debug('renamed', file, "from", oldPath)
-        await this.runJobWithNoResolutionProcessCollision(
+    async queueAbstractModificationFromRename(abstractFile: TAbstractFile, oldPath: string) {
+        if(!(await this.taskManager.isAbstractFileKanbanCard(abstractFile))){
+            return this.deltaStatus();//not kanban so idc
+        }
+        logger.debug('analysis renamed', abstractFile, "from", oldPath)
+        return await this.runJobWithNoResolutionProcessCollision(
             ProcessType.RENAME,
             async () => {
                 logger.debug("starting analysis | rename of", oldPath)
                 //this.knownDeltaForTaskLists.toRemote.modify.push
                 // task list modification
-                logger.debug("finished analysis | rename of", oldPath, "to", file)
+                logger.debug("finished analysis | rename of", oldPath, "to", abstractFile)
+                return this.deltaStatus();
             }
         );
 					
     }
 
-    async queueModificationToRemoteFromWrite(file: TAbstractFile) {
-        const cardIndex = this.taskManager.findKanbanCard(file)
-        if(cardIndex != -1){
-            logger.info('modified card', file)
+    async queueModificationToRemoteFromWrite(abstractFile: TAbstractFile) {
+        if(!(await this.taskManager.isAbstractFileKanbanCard(abstractFile))){
+            return this.deltaStatus();//not kanban card => don't care
         }
-        else{
-            return; //not kanban card => don't care
-        }
+        logger.info('analysis modified card', abstractFile)
 
-        await this.runJobWithNoResolutionProcessCollision(
+        return await this.runJobWithNoResolutionProcessCollision(
             ProcessType.MODIFY,
             async () => {
-                logger.debug("starting analysis | modify of", file)
+                logger.debug("starting analysis | modify of", abstractFile)
                 //assuming a cached, resolved taskLists/todoLists object
 
                 //check if file is in this.kanbancards
@@ -260,26 +290,25 @@ export default class TaskSync {
                 //compare to existing, corresponding tasks in the kanban card in the cached list
 
                 //add to known delta accordingly.
-                logger.debug("finished analysis | modify of", file)
+                logger.debug("finished analysis | modify of", abstractFile)
+                return this.deltaStatus();
             }
         );
     }
 
-    async queueDeletionToRemote(file: TAbstractFile) {
-        const cardIndex = this.taskManager.findKanbanCard(file)
-        if(cardIndex != -1){        
-            logger.debug('deleted', file)
+    async queueDeletionToRemote(abstractFile: TAbstractFile) {
+        if(!(await this.taskManager.isAbstractFileKanbanCard(abstractFile))){
+            return this.deltaStatus();//not kanban so idc
         }
-        else{
-            return; //not kanban card => don't care
-        }
-        await this.runJobWithNoResolutionProcessCollision(
+        logger.debug('analysis deleted', abstractFile)
+        return await this.runJobWithNoResolutionProcessCollision(
             ProcessType.DELETE,
             async () => {
-                logger.debug("starting analysis | delete of", file)
+                logger.debug("starting analysis | delete of", abstractFile)
                 //this.knownDeltaForTaskLists.toRemote.delete.push
                 // task list deletion
-                logger.debug("finished analysis | delete of", file)
+                logger.debug("finished analysis | delete of", abstractFile)
+                return this.deltaStatus();
             }
         )
     }

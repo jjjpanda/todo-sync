@@ -102,7 +102,7 @@ export default class ObsidianUtils {
             taskLists[indexOfNamedTaskList].addTasks(
             	content
                     .split("\n")
-                    .filter(line => Task.isLineATask(line) != null)
+                    .filter(line => Task.isLineATask(line) !== null)
                     .map(taskLine => new Task(taskLists[indexOfNamedTaskList], taskLine, file.stat.mtime ?? 0))
             )
         })

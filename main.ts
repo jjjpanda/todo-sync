@@ -52,46 +52,6 @@ export default class ToDoPlugin extends Plugin {
 		} catch(error){
 			this.throwErrorAndQuit(new Error("sign in failed"), "error with logging in")
 		}
-
-		this.app.workspace.onLayoutReady(async () => {
-			await this.taskSync.syncCards()
-			
-			this.taskFileSelector = this.addRibbonIcon(
-				'checkmark', 
-				'Task Files', 
-				(evt: MouseEvent) => {	
-					new TaskOpenerModal(
-						this.app, 
-						this.taskSync
-					).open()
-				}
-			);
-
-			this.taskReorderButton = this.addRibbonIcon(
-				'arrow-up-down',
-				"Reorder Tasks",
-				(evt: MouseEvent) => {
-					const view = this.app.workspace.getActiveViewOfType(MarkdownView);
-					if(!view){
-						return
-					}
-					const editor = view.editor
-					if(editor){
-						reorderCheckboxes(view.getMode(), editor, this.app.vault, view.file);
-					}
-				}
-			)
-
-			this.addCommand({
-				id: 'reorder-tasks-on-page',
-				name: 'Reorder Tasks',
-				editorCallback(editor: Editor, ctx) {
-					reorderCheckboxes("source", editor);
-				},
-				
-			});
-		})
-
 		
 		this.registerDomEvent(document, "change", async (evt: MSLoginEvent) => {
 			const session = this.taskSync.server.getSession()
@@ -112,37 +72,20 @@ export default class ToDoPlugin extends Plugin {
 			this.taskSync.setGraphClient(graphClient);
 
 			this.app.workspace.onLayoutReady(async () => {
+				logger.debug('MS LOGINEVENT AND LAYOUT READY')
 
-				this.registerEvent(this.app.vault.on('create', async (file) => {
-					await this.taskSync.queueAdditionToRemote(file)
-				}))
-				this.registerEvent(this.app.vault.on('rename', async (file, oldPath) => {
-					await this.taskSync.queueAbstractModificationFromRename(file, oldPath)
-				}))
-				this.registerEvent(this.app.vault.on('delete', async (file) => {
-					await this.taskSync.queueDeletionToRemote(file)
-				}))
-				this.registerEvent(this.app.vault.on('modify', async (file) => {
-					await this.taskSync.queueModificationToRemoteFromWrite(file)
-				}));
+				if(!this.taskSync.getCards() || this.taskSync.getCards().length === 0){
+					await this.taskSync.syncCards()
+				}
+				
+				this.setUpTaskFileSelectorRibbon();
+				this.setUpReorderTasksRibbon();
+				this.setUpReorderTasksCommand();
 
+				this.setUpVaultEventListeners();
 				this.taskSyncStatus.innerHTML = await this.taskSync.fetchDelta()
-
-				this.addCommand({
-					id: "sync-lists-and-tasks-command",
-					name: "Sync Tasks",
-					callback: async () => {
-						this.taskSyncStatus.innerHTML = await this.taskSync.syncTaskListsAndTasks()
-					}
-				})
-
-				this.taskSyncButton = this.addRibbonIcon(
-					'refresh-ccw',
-					"Sync Tasks",
-					async (evt) => {
-						this.taskSyncStatus.innerHTML = await this.taskSync.syncTaskListsAndTasks()
-					}
-				)
+				this.setUpTaskSyncCommand();
+				this.setUpTaskSyncRibbon();
 
 				this.registerInterval(
 					window.setInterval(
@@ -155,6 +98,81 @@ export default class ToDoPlugin extends Plugin {
 			})
 			
 		})
+	}
+
+	private setUpTaskSyncRibbon() {
+		this.taskSyncButton = this.addRibbonIcon(
+			'refresh-ccw',
+			"Sync Tasks",
+			async (evt) => {
+				this.taskSyncStatus.innerHTML = await this.taskSync.syncTaskListsAndTasks();
+			}
+		);
+	}
+
+	private setUpTaskSyncCommand() {
+		this.addCommand({
+			id: "sync-lists-and-tasks-command",
+			name: "Sync Tasks",
+			callback: async () => {
+				this.taskSyncStatus.innerHTML = await this.taskSync.syncTaskListsAndTasks();
+			}
+		});
+	}
+
+	private setUpVaultEventListeners() {
+		this.registerEvent(this.app.vault.on('create', async (file) => {
+			this.taskSyncStatus.innerHTML = await this.taskSync.queueAdditionToRemote(file);
+		}));
+		this.registerEvent(this.app.vault.on('rename', async (file, oldPath) => {
+			this.taskSyncStatus.innerHTML = await this.taskSync.queueAbstractModificationFromRename(file, oldPath);
+		}));
+		this.registerEvent(this.app.vault.on('delete', async (file) => {
+			this.taskSyncStatus.innerHTML = await this.taskSync.queueDeletionToRemote(file);
+		}));
+		this.registerEvent(this.app.vault.on('modify', async (file) => {
+			this.taskSyncStatus.innerHTML = await this.taskSync.queueModificationToRemoteFromWrite(file);
+		}));
+	}
+
+	private setUpReorderTasksCommand() {
+		this.addCommand({
+			id: 'reorder-tasks-on-page',
+			name: 'Reorder Tasks',
+			editorCallback(editor: Editor, ctx) {
+				reorderCheckboxes("source", editor);
+			},
+		});
+	}
+
+	private setUpReorderTasksRibbon() {
+		this.taskReorderButton = this.addRibbonIcon(
+			'arrow-up-down',
+			"Reorder Tasks",
+			(evt: MouseEvent) => {
+				const view = this.app.workspace.getActiveViewOfType(MarkdownView);
+				if (!view) {
+					return;
+				}
+				const editor = view.editor;
+				if (editor) {
+					reorderCheckboxes(view.getMode(), editor, this.app.vault, view.file);
+				}
+			}
+		);
+	}
+
+	private setUpTaskFileSelectorRibbon() {
+		this.taskFileSelector = this.addRibbonIcon(
+			'checkmark',
+			'Task Files',
+			(evt: MouseEvent) => {
+				new TaskOpenerModal(
+					this.app,
+					this.taskSync
+				).open();
+			}
+		);
 	}
 
 	onunload() {

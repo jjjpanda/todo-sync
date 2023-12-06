@@ -5,12 +5,12 @@ import Logger from "./util/logger"
 import Delta from "./model/Delta";
 import ObsidianUtils from "./util/obsidianUtils";
 import { CHECKBOX_REGEX, EXTRA_NEWLINE_BETWEEN_TASKS_REGEX, TASKLIST_ID_REGEX } from "./model/TaskRegex";
-import { TAbstractFile, TFile } from "obsidian";
+import { TAbstractFile, TFile, TFolder } from "obsidian";
 const logger = new Logger("TaskManager")
 export default class TaskManager {
     folder: string;
     obsidianUtils: ObsidianUtils;
-	kanbanCards;
+	kanbanCards: TFile[];
 
     constructor(obsidianUtils, folder){
         this.obsidianUtils = obsidianUtils;
@@ -26,7 +26,6 @@ export default class TaskManager {
     
     async syncKanbanCards(){
         logger.info("syncing cards from", this.folder)
-        let tag = 'kanban_card';
 
         // Get all markdown files in the vault
         let markdownFiles = this.obsidianUtils.getFiles();
@@ -39,25 +38,45 @@ export default class TaskManager {
         });
         logger.debug("found files", filesInFolder)
 
-        const fileIfKanbanCard = (file: TFile) => this.obsidianUtils.getFileContents(file).then(content => {
-            // Parse YAML frontmatter
-            let contentSplit = content.split('---');
-            let frontMatter = contentSplit[1];
-            if (frontMatter.includes("tags:")) {
-                // Check if frontmatter contains the specified tag
-                if (frontMatter.includes(tag)) {
-                    return file;
-                }
-            }
-            // Check if content contains the specified tag not in YAML
-            return content.includes(`#${tag}`) ? file : null;
-        })
-
         // Read all files and filter based on the tag
-        const kanbanCardsUnfiltered = await Promise.all(filesInFolder.map(fileIfKanbanCard))
+        const kanbanCardsUnfiltered = await Promise.all(filesInFolder.map(async (file) => {
+            const isKanban = await this.isFileKanbanCard(file)
+            return isKanban ? file : null
+        }))
 
-        this.kanbanCards = kanbanCardsUnfiltered.filter(file => !!file)
+        this.kanbanCards = kanbanCardsUnfiltered.filter(file => file !== null) as TFile[]
         logger.info("kanban cards file list", this.kanbanCards)
+    }
+
+    async isFileKanbanCard(file: TFile){
+        let tag = 'kanban_card';
+
+        const fileContents = await this.obsidianUtils.getFileContents(file)
+        if (fileContents.includes(`#${tag}`) ){
+            return true;
+        }
+        if(!fileContents){
+            return false;
+        }
+        let contentSplit = fileContents.split('---');
+        if(contentSplit.length < 2){
+            return false;
+        }
+        let frontMatter = contentSplit[1];
+        if (frontMatter.includes("tags:")) {
+            if (frontMatter.includes(tag)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    async isAbstractFileKanbanCard(abstractFile: TAbstractFile): Promise<boolean>{
+        if((abstractFile as TFolder).children){
+            return false
+        } else{
+            return await this.isFileKanbanCard(abstractFile as TFile)
+        }
     }
 
     async resolveListDelta(delta: Delta<TaskList>): Promise<Delta<TaskList>> {

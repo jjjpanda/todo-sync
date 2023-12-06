@@ -6,7 +6,7 @@ import { CHECKBOX_LIST_REGEX } from "lib/model/TaskRegex";
 import { EXTRA_NEWLINE_BETWEEN_TASKS_REGEX } from "lib/model/TaskRegex";
 
 const logger = new Logger("Reordering Tasks")
-export function reorderCheckboxes(mode: MarkdownViewModeType, editor: Editor, vault?: Vault, file?: TFile) {
+export function reorderCheckboxes(mode: MarkdownViewModeType, editor: Editor, vault?: Vault, file?: TFile | null) {
     const currentText = editor.getValue();
     const reorderedText = reorderCheckboxesInFile(currentText);
     logger.debug(editor)
