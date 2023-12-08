@@ -23,6 +23,13 @@ export default class TaskManager {
         }
         return this.kanbanCards.findIndex(card => card.path === file.path)
     }
+
+    findKanbanCardByPath(path: string): number {
+        if(!this.kanbanCards){
+            return -1
+        }
+        return this.kanbanCards.findIndex(card => card.path === path)
+    }
     
     async syncKanbanCards(){
         logger.info("syncing cards from", this.folder)

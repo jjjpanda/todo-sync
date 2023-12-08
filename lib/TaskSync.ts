@@ -213,8 +213,39 @@ export default class TaskSync {
                 return "✓ synced";
             }
         );
+    }
 
-        
+    async taskListFromFile(file: TFile){
+        const contents = await this.obsidianUtils.getFileContents(file);
+        const tasklist = new TaskList(
+            this.obsidianUtils.label(file),
+            TaskManager.parseId(contents) ?? "",
+            file.stat.mtime
+        );
+        tasklist.addTasks(
+            contents
+                .split("\n")
+                .filter(line => Task.isLineATask(line) !== null)
+                .map(taskLine => new Task(tasklist, taskLine, file.stat.mtime ?? 0))
+        );
+        return tasklist
+    }
+
+    private async addToRemote(file: TFile) {
+        this.taskManager.kanbanCards.push(file);
+        this.knownDeltaForTaskLists.toRemote.add.push(
+            await this.taskListFromFile(file)
+        );
+    }
+    
+    private async modifyRemote(cardIndex: number, file: TFile) {
+        this.taskManager.kanbanCards[cardIndex] = file;
+        this.knownDeltaForTaskLists.toRemote.modify.push(await this.taskListFromFile(file));
+    }
+
+    private async deleteFromRemote(cardIndex: number, file: TFile) {
+        this.taskManager.kanbanCards.splice(cardIndex, 1)
+        this.knownDeltaForTaskLists.toRemote.delete.push(await this.taskListFromFile(file));
     }
 
     async queueAdditionToRemote(abstractFile: TAbstractFile) {
@@ -226,27 +257,8 @@ export default class TaskSync {
             ProcessType.CREATE,
             async () => {
                 logger.debug("starting analysis | creation of", abstractFile)
-        
-                const file = abstractFile as TFile
-
-                this.taskManager.kanbanCards.push(file)
-                const contents = await this.obsidianUtils.getFileContents(file)
-                const tasklist = new TaskList(
-                    this.obsidianUtils.label(file),
-                    TaskManager.parseId(contents) ?? "",
-                    file.stat.mtime
-                )
-                tasklist.addTasks(
-                    contents
-                        .split("\n")
-                        .filter(line => Task.isLineATask(line) !== null)
-                        .map(taskLine => new Task(tasklist, taskLine, file.stat.mtime ?? 0))
-                )
-                this.knownDeltaForTaskLists.toRemote.add.push(tasklist)
-                
-                // task list addition
+                await this.addToRemote(abstractFile as TFile);
                 logger.debug("finished analysis | creation of", abstractFile)
-
                 return this.deltaStatus()
             }
         );
@@ -261,8 +273,17 @@ export default class TaskSync {
             ProcessType.RENAME,
             async () => {
                 logger.debug("starting analysis | rename of", oldPath)
-                //this.knownDeltaForTaskLists.toRemote.modify.push
-                // task list modification
+                
+                const file = abstractFile as TFile
+                const cardIndex = this.taskManager.findKanbanCardByPath(oldPath);
+                if(cardIndex === -1){
+                    logger.debug(oldPath, "wasn't a kanban card, adding it")
+                    return await this.addToRemote(file)
+                }
+                else{
+                    await this.modifyRemote(cardIndex, file);
+                }
+
                 logger.debug("finished analysis | rename of", oldPath, "to", abstractFile)
                 return this.deltaStatus();
             }
@@ -305,12 +326,20 @@ export default class TaskSync {
             ProcessType.DELETE,
             async () => {
                 logger.debug("starting analysis | delete of", abstractFile)
-                //this.knownDeltaForTaskLists.toRemote.delete.push
-                // task list deletion
+                const file = abstractFile as TFile
+                const cardIndex = this.taskManager.findKanbanCard(file);
+                if(cardIndex !== -1){
+                    await this.deleteFromRemote(cardIndex, file);
+                }
+                else{
+                    logger.debug("not a kanban card to delete")
+                }
                 logger.debug("finished analysis | delete of", abstractFile)
                 return this.deltaStatus();
             }
         )
     }
+
+   
 
 }
