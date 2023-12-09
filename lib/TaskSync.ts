@@ -87,7 +87,7 @@ export default class TaskSync {
         this.printProcessQueue()
     }
     
-    async runJobWithNoResolutionProcessCollision<T>(type: ProcessType, job: () => Promise<T>) {
+    async runJobWithNoResolutionProcessCollision<T>(type: ProcessType, job: (id: string) => Promise<T>) {
         const trace = this.submitToQueue(type)
         while(this.processQueue.length > 0){
             if(trace === this.processQueue[0].trace){
@@ -99,7 +99,7 @@ export default class TaskSync {
             }
         }
         logger.debug("starting task w/ trace", trace, "and type", ProcessType[type])
-        const results = await job();
+        const results = await job(trace);
         this.removeFromQueue(trace)
         return results
     }
@@ -137,10 +137,10 @@ export default class TaskSync {
         }    
         return await this.runJobWithNoResolutionProcessCollision(
             ProcessType.FETCH,
-            async () => {
-                logger.info("beginning fetch");
+            async (traceId) => {
+                logger.info(traceId, "beginning fetch");
 
-                logger.debug("known deltas", this.knownDeltaForTaskLists, this.knownDeltaForTasks);
+                logger.debug(traceId, "known deltas", this.knownDeltaForTaskLists, this.knownDeltaForTasks);
                 
                 let taskLists, todoLists;
 
@@ -148,7 +148,7 @@ export default class TaskSync {
                     taskLists = await this.fetchTasksFromKanbanCards();
                     todoLists = await this.fetchTasksFromToDo();
                 } catch (e) {
-                    logger.error(e)
+                    logger.error(traceId, e)
                     this.lastFetchFailed = true;
                     return "⚠"
                 }
@@ -162,9 +162,9 @@ export default class TaskSync {
                         todoLists,
                         this.knownDeltaForTaskLists
                     );
-                    logger.info("tasklist delta", taskListDelta);
+                    logger.info(traceId, "tasklist delta", taskListDelta);
                 } catch(e){
-                    logger.error("issue with resolving tasklists", e)
+                    logger.error(traceId, "issue with resolving tasklists", e)
                     this.lastFetchFailed = true;
                     return "⚠"
                 }
@@ -175,9 +175,9 @@ export default class TaskSync {
                         todoLists.map(list => list.tasks).flat(),
                         this.knownDeltaForTasks
                     );
-                    logger.info("task delta", taskDelta);
+                    logger.info(traceId, "task delta", taskDelta);
                 } catch(e){
-                    logger.error("issue with resolving tasks", e)
+                    logger.error(traceId, "issue with resolving tasks", e)
                     this.lastFetchFailed = true;
                     return "⚠"
                 }
@@ -186,7 +186,7 @@ export default class TaskSync {
                 this.knownDeltaForTasks = taskDelta
         
                 this.lastFetchFailed = false;
-                logger.info("fetch done");
+                logger.info(traceId, "fetch done");
         
                 if(taskDelta.isEmpty() && taskListDelta.isEmpty()){
                     return "✓ synced";
@@ -201,31 +201,31 @@ export default class TaskSync {
     async syncTaskListsAndTasks() {
         return await this.runJobWithNoResolutionProcessCollision(
             ProcessType.SYNC,
-            async () => {
+            async (traceId) => {
                 if(this.lastFetchFailed){
-                    logger.warn("not starting sync, last FETCH failed")
+                    logger.warn(traceId, "not starting sync, last FETCH failed")
                     new Notice("not starting sync, last FETCH failed")
-                    return;
+                    return "⚠";
                 }
 
                 let taskListDelta = this.knownDeltaForTaskLists;
                 let taskDelta = this.knownDeltaForTasks;
-                logger.info("starting sync")
+                logger.info(traceId, "starting sync")
         
                 taskListDelta = await this.toDoManager.resolveListDelta(taskListDelta);
-                logger.debug("task list delta resolved to remote", taskListDelta);
+                logger.debug(traceId, "task list delta resolved to remote", taskListDelta);
                 taskListDelta = await this.taskManager.resolveListDelta(taskListDelta);
-                logger.info("task list delta resolved", taskListDelta);
+                logger.info(traceId, "task list delta resolved", taskListDelta);
         
                 taskDelta = await this.toDoManager.resolveTaskDelta(taskDelta);
-                logger.debug("task delta resolved to remote", taskDelta);
+                logger.debug(traceId, "task delta resolved to remote", taskDelta);
                 taskDelta = await this.taskManager.resolveTaskDelta(taskDelta);
-                logger.info("task delta resolved", taskDelta);
+                logger.info(traceId, "task delta resolved", taskDelta);
         
-                logger.info("completed sync")  
+                logger.info(traceId, "completed sync")  
                 
                 this.resetKnownDeltas()  
-                const resolvedLists = await this.fetchTasksFromKanbanCards()
+                await this.fetchTasksFromKanbanCards()
                 
                 return "✓ synced";
             }
@@ -282,11 +282,11 @@ export default class TaskSync {
         logger.debug('analysis created', abstractFile)
         return await this.runJobWithNoResolutionProcessCollision(
             ProcessType.CREATE,
-            async () => {
-                logger.debug("starting analysis | creation of", abstractFile)
+            async (traceId) => {
+                logger.debug(traceId, "starting analysis | creation of", abstractFile)
                 await this.addToRemote(abstractFile as TFile);
                 await this.fetchTasksFromKanbanCards();
-                logger.debug("finished analysis | creation of", abstractFile, this.knownDeltaForTaskLists, this.knownDeltaForTasks)
+                logger.debug(traceId, "finished analysis | creation of", abstractFile, this.knownDeltaForTaskLists, this.knownDeltaForTasks)
                 return this.deltaStatus()
             }
         );
@@ -299,13 +299,13 @@ export default class TaskSync {
         logger.debug('analysis renamed', abstractFile, "from", oldPath)
         return await this.runJobWithNoResolutionProcessCollision(
             ProcessType.RENAME,
-            async () => {
-                logger.debug("starting analysis | rename of", oldPath)
+            async (traceId) => {
+                logger.debug(traceId, "starting analysis | rename of", oldPath)
                 
                 const file = abstractFile as TFile
                 const cardIndex = this.taskManager.findKanbanCardByPath(oldPath);
                 if(cardIndex === -1){
-                    logger.debug(oldPath, "wasn't a kanban card, adding it")
+                    logger.debug(traceId, oldPath, "wasn't a kanban card, adding it")
                     await this.addToRemote(file)
                 }
                 else{
@@ -313,7 +313,7 @@ export default class TaskSync {
                 }
                 await this.fetchTasksFromKanbanCards();
                 
-                logger.debug("finished analysis | rename of", oldPath, "to", abstractFile, this.knownDeltaForTaskLists, this.knownDeltaForTasks)
+                logger.debug(traceId, "finished analysis | rename of", oldPath, "to", abstractFile, this.knownDeltaForTaskLists, this.knownDeltaForTasks)
                 return this.deltaStatus();
             }
         );
@@ -328,12 +328,12 @@ export default class TaskSync {
 
         return await this.runJobWithNoResolutionProcessCollision(
             ProcessType.MODIFY,
-            async () => {
-                logger.debug("starting analysis | modify of", abstractFile)
+            async (traceId) => {
+                logger.debug(traceId, "starting analysis | modify of", abstractFile)
                 const file = abstractFile as TFile
                 const cardIndex = this.taskManager.findKanbanCard(file);
                 if(cardIndex === -1){
-                    logger.debug(file, "wasn't a kanban card, adding it")
+                    logger.debug(traceId, file, "wasn't a kanban card, adding it")
                     await this.addToRemote(file)
                 }
                 else{
@@ -366,7 +366,7 @@ export default class TaskSync {
                     for(let line of lines){
                         const taskOfLine = new Task(taskListCurrent, line, file.stat.mtime);
                         if(taskOfLine.id in duplicateIds){
-                            if(taskOfLine.dueDate !== idCounts[taskOfLine.id].earliestDueDate){
+                            if(! moment(taskOfLine.dueDate).isSame(moment(idCounts[taskOfLine.id].earliestDueDate), "D") ){
                                 const lineWithoutId = line.replace(` %%[id:: ${taskOfLine.id}]%%`, "")
                                 taskListContents = taskListContents.replace(line, lineWithoutId)
                                 this.knownDeltaForTasks.toRemote.add.push(new Task(taskListCurrent, lineWithoutId, file.stat.mtime))
@@ -382,10 +382,10 @@ export default class TaskSync {
                         return this.deltaStatus();
                     }
 
-                    logger.debug("no duplicate ids found in", file)
+                    logger.debug(traceId, "no duplicate ids found in", file)
                     const previousCachedTasks = await this.cachedTaskLists.find(list => list.id === taskListCurrent.id)
                     const diff = DeltaResolver.getTaskDeltas(taskListCurrent.tasks, previousCachedTasks?.tasks ?? [])
-                    console.debug(taskListCurrent, previousCachedTasks, idCounts, diff)
+                    logger.debug(traceId, previousCachedTasks, taskListCurrent, idCounts, diff)
 
                     if(previousCachedTasks){                        
                         for(const task of diff.toOrigin.add){
@@ -401,7 +401,7 @@ export default class TaskSync {
                                     break;
                                 }
                             }
-                            if(!alreadyTakenOutOfPresumedAddition && previousCachedTasks.tasks.length > taskListCurrent.tasks.length){
+                            if(!alreadyTakenOutOfPresumedAddition && task.id !== "" && previousCachedTasks.tasks.length > taskListCurrent.tasks.length){
                                 this.knownDeltaForTasks.toRemote.delete.push(task)
                             }
                         }
@@ -420,7 +420,7 @@ export default class TaskSync {
                 }
                 
                 await this.fetchTasksFromKanbanCards();
-                logger.debug("finished analysis | modify of", abstractFile, this.knownDeltaForTaskLists, this.knownDeltaForTasks)
+                logger.debug(traceId, "finished analysis | modify of", abstractFile, this.knownDeltaForTaskLists, this.knownDeltaForTasks)
                 return this.deltaStatus();
             }
         );
@@ -430,18 +430,18 @@ export default class TaskSync {
         logger.debug('analysis deleted', abstractFile)
         return await this.runJobWithNoResolutionProcessCollision(
             ProcessType.DELETE,
-            async () => {
-                logger.debug("starting analysis | delete of", abstractFile)
+            async (traceId) => {
+                logger.debug(traceId, "starting analysis | delete of", abstractFile)
                 const file = abstractFile as TFile
                 const cardIndex = this.taskManager.findKanbanCard(file);
                 if(cardIndex !== -1){
                     await this.deleteFromRemote(cardIndex, file);
                 }
                 else{
-                    logger.debug("not a kanban card to delete")
+                    logger.debug(traceId, "not a kanban card to delete")
                 }
                 await this.fetchTasksFromKanbanCards();
-                logger.debug("finished analysis | delete of", abstractFile, this.knownDeltaForTaskLists, this.knownDeltaForTasks)
+                logger.debug(traceId, "finished analysis | delete of", abstractFile, this.knownDeltaForTaskLists, this.knownDeltaForTasks)
                 return this.deltaStatus();
             }
         )
