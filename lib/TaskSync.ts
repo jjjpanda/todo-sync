@@ -391,8 +391,11 @@ export default class TaskSync {
                         for(const task of diff.toOrigin.add){
                             let alreadyTakenOutOfPresumedAddition = false
                             for(const knownTaskAdd of diff.toRemote.add){
-                                if(task.hasSameProperties(knownTaskAdd)){
-                                    const indexOfTaskAdd = this.knownDeltaForTasks.toRemote.add.findIndex(t => t.hasSameProperties(knownTaskAdd))
+                                if(!task.hasSameProperties(knownTaskAdd)){
+                                    continue;
+                                }
+                                const indexOfTaskAdd = this.knownDeltaForTasks.toRemote.add.findIndex(t => t.hasSameProperties(knownTaskAdd))
+                                if(indexOfTaskAdd !== -1){
                                     this.knownDeltaForTasks.toRemote.add.splice(indexOfTaskAdd, 1)
                                     alreadyTakenOutOfPresumedAddition = true
                                     break;
