@@ -146,7 +146,10 @@ export default class ToDoPlugin extends Plugin {
 		this.addCommand({
 			id: 'reorder-tasks-on-page',
 			name: 'Reorder Tasks',
-			editorCallback(editor: Editor, ctx) {
+			editorCallback: (editor: Editor, ctx) => {
+				this.taskSync.fetchDelta().then(result => {
+					this.taskSyncStatus.innerHTML = result
+				});
 				reorderCheckboxes("source", editor);
 			},
 		});
@@ -159,10 +162,16 @@ export default class ToDoPlugin extends Plugin {
 			(evt: MouseEvent) => {
 				const view = this.app.workspace.getActiveViewOfType(MarkdownView);
 				if (!view) {
+					this.taskSync.fetchDelta().then(result => {
+						this.taskSyncStatus.innerHTML = result
+					});
 					return;
 				}
 				const editor = view.editor;
 				if (editor) {
+					this.taskSync.fetchDelta().then(result => {
+						this.taskSyncStatus.innerHTML = result
+					});
 					reorderCheckboxes(view.getMode(), editor, this.app.vault, view.file);
 				}
 			}
