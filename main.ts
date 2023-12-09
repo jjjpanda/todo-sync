@@ -16,6 +16,7 @@ export default class ToDoPlugin extends Plugin {
 	taskSyncStatus: HTMLElement;
 	taskSyncButton: HTMLElement;
 	private taskSync: TaskSync
+	areButtonsAndRibbonSetUp = false
 	
 	async onload() {
 		try{
@@ -73,6 +74,10 @@ export default class ToDoPlugin extends Plugin {
 
 			this.app.workspace.onLayoutReady(async () => {
 				logger.debug('MS LOGINEVENT AND LAYOUT READY')
+				if(this.areButtonsAndRibbonSetUp){
+					logger.debug("ALREADY SET UP ONCE, SKIPPING")
+					return
+				}
 
 				if(!this.taskSync.getCards() || this.taskSync.getCards().length === 0){
 					await this.taskSync.syncCards()
@@ -95,6 +100,8 @@ export default class ToDoPlugin extends Plugin {
 						Number(this.settings.FETCH_RATE) * 1000
 					)
 				)
+
+				this.areButtonsAndRibbonSetUp = true;
 			})
 			
 		})
@@ -196,8 +203,7 @@ export default class ToDoPlugin extends Plugin {
 
 	async saveSettings() {
 		await this.saveData(this.settings);
-		await this.unload()
-		await this.onload()
+		//new Notice("Restart to have changes take effect")
 	}
 }
 

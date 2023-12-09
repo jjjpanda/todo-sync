@@ -13,8 +13,11 @@ import TaskList from "./model/TaskList";
 import Task from "./model/Task";
 import { randomUUID } from "crypto";
 import ProcessType from "./model/ProcessType";
+import moment from "moment";
 
 const logger = new Logger("TaskSync")
+
+type IdCountObject = {[id: string]: {count: number, earliestDueDate: string}}
 export default class TaskSync {
 	obsidianUtils: ObsidianUtils;
     taskManager: TaskManager;
@@ -24,6 +27,7 @@ export default class TaskSync {
     processQueue: {trace: string, type: ProcessType, running: boolean}[];
     knownDeltaForTaskLists = new Delta<TaskList>();
     knownDeltaForTasks = new Delta<Task>();
+    cachedTaskLists: TaskList[];
     
     constructor(app: App, settings: ToDoSettings){
         this.obsidianUtils = new ObsidianUtils(app, settings.NEW_CARD_TEMPLATE)
@@ -32,6 +36,7 @@ export default class TaskSync {
         this.server = new MSAuthServer(settings)
         this.lastFetchFailed = false
         this.processQueue = []
+        this.cachedTaskLists = []
     }
 
     async syncCards() {
@@ -109,6 +114,21 @@ export default class TaskSync {
         const numberOfRemoteChanges = this.knownDeltaForTasks.toRemoteChangesCount() + this.knownDeltaForTaskLists.toRemoteChangesCount();
         return `↓${numberOfOriginChanges} ↑${numberOfRemoteChanges}`
     }
+    
+    private async fetchTasksFromKanbanCards() {
+        const taskLists = await this.obsidianUtils.parseTasks(this.taskManager.kanbanCards);
+        logger.debug("task lists", taskLists);
+
+        this.cachedTaskLists = taskLists;
+        return taskLists;
+    }
+
+    private async fetchTasksFromToDo() {
+        const todoLists = await this.toDoManager.getToDoTasks() ?? [];
+        logger.debug("todo lists", todoLists);
+
+        return todoLists;
+    }
 
     async fetchDelta() {    
         while(!this.taskManager.kanbanCards){
@@ -124,13 +144,10 @@ export default class TaskSync {
                 
                 let taskLists, todoLists;
 
-                try{
-                    taskLists = await this.obsidianUtils.parseTasks(this.taskManager.kanbanCards);
-                    logger.debug("task lists", taskLists);
-
-                    todoLists = await this.toDoManager.getToDoTasks() ?? [];
-                    logger.debug("todo lists", todoLists);    
-                } catch (e){
+                try {
+                    taskLists = await this.fetchTasksFromKanbanCards();
+                    todoLists = await this.fetchTasksFromToDo();
+                } catch (e) {
                     logger.error(e)
                     this.lastFetchFailed = true;
                     return "⚠"
@@ -208,7 +225,7 @@ export default class TaskSync {
                 logger.info("completed sync")  
                 
                 this.resetKnownDeltas()  
-                //need a final resolved taskLists and todoLists
+                const resolvedLists = await this.fetchTasksFromKanbanCards()
                 
                 return "✓ synced";
             }
@@ -245,7 +262,17 @@ export default class TaskSync {
 
     private async deleteFromRemote(cardIndex: number, file: TFile) {
         this.taskManager.kanbanCards.splice(cardIndex, 1)
-        this.knownDeltaForTaskLists.toRemote.delete.push(await this.taskListFromFile(file));
+        const listByPath = (list: TaskList) => (list.pathFrom(this.taskManager.folder) === file.path)
+        const taskListFromCache = this.cachedTaskLists.find(listByPath)
+        if(taskListFromCache){
+            this.knownDeltaForTaskLists.toRemote.delete.push(taskListFromCache);
+        }
+        else{
+            const taskListFromRemoteAddIndex = this.knownDeltaForTaskLists.toRemote.add.findIndex(listByPath)
+            if(taskListFromRemoteAddIndex){
+                this.knownDeltaForTaskLists.toRemote.add.splice(taskListFromRemoteAddIndex, 1)
+            }
+        }
     }
 
     async queueAdditionToRemote(abstractFile: TAbstractFile) {
@@ -258,7 +285,8 @@ export default class TaskSync {
             async () => {
                 logger.debug("starting analysis | creation of", abstractFile)
                 await this.addToRemote(abstractFile as TFile);
-                logger.debug("finished analysis | creation of", abstractFile)
+                await this.fetchTasksFromKanbanCards();
+                logger.debug("finished analysis | creation of", abstractFile, this.knownDeltaForTaskLists, this.knownDeltaForTasks)
                 return this.deltaStatus()
             }
         );
@@ -278,13 +306,14 @@ export default class TaskSync {
                 const cardIndex = this.taskManager.findKanbanCardByPath(oldPath);
                 if(cardIndex === -1){
                     logger.debug(oldPath, "wasn't a kanban card, adding it")
-                    return await this.addToRemote(file)
+                    await this.addToRemote(file)
                 }
                 else{
                     await this.modifyRemote(cardIndex, file);
                 }
-
-                logger.debug("finished analysis | rename of", oldPath, "to", abstractFile)
+                await this.fetchTasksFromKanbanCards();
+                
+                logger.debug("finished analysis | rename of", oldPath, "to", abstractFile, this.knownDeltaForTaskLists, this.knownDeltaForTasks)
                 return this.deltaStatus();
             }
         );
@@ -301,26 +330,100 @@ export default class TaskSync {
             ProcessType.MODIFY,
             async () => {
                 logger.debug("starting analysis | modify of", abstractFile)
-                //assuming a cached, resolved taskLists/todoLists object
+                const file = abstractFile as TFile
+                const cardIndex = this.taskManager.findKanbanCard(file);
+                if(cardIndex === -1){
+                    logger.debug(file, "wasn't a kanban card, adding it")
+                    await this.addToRemote(file)
+                }
+                else{
+                    const taskListCurrent = await this.taskListFromFile(file)   
+                    let taskListContents = await this.obsidianUtils.getFileContents(file);
+                    const idCounts = taskListCurrent.tasks.reduce<IdCountObject>((obj, {id, dueDate}) => {
+                        const keySafeId = id !== "" ? id : "__blank"
+                        let earlierDueDate = moment(dueDate).format("YYYY-MM-DD")
+                        if(keySafeId in obj){
+                            earlierDueDate = moment.min(moment(dueDate), moment(obj[keySafeId].earliestDueDate)).format("YYYY-MM-DD")
+                        }
+                        return {
+                            ...obj, 
+                            [keySafeId]: {
+                                count: id !== "" ? (taskListContents.match(new RegExp(id, "g")) || []).length : -1,
+                                earliestDueDate: earlierDueDate
+                            }
+                        }
+                    }, {})
+                    let duplicateIds = {} as {[id: string]: boolean}
+                    for(const id in idCounts){
+                        if(id !== "__blank" && idCounts[id].count > 1){
+                            duplicateIds[id] = true
+                        }
+                        else{
+                            continue;
+                        }
+                    }
+                    let lines = taskListContents.split("\n")
+                    for(let line of lines){
+                        const taskOfLine = new Task(taskListCurrent, line, file.stat.mtime);
+                        if(taskOfLine.id in duplicateIds){
+                            if(taskOfLine.dueDate !== idCounts[taskOfLine.id].earliestDueDate){
+                                const lineWithoutId = line.replace(` %%[id:: ${taskOfLine.id}]%%`, "")
+                                taskListContents = taskListContents.replace(line, lineWithoutId)
+                                this.knownDeltaForTasks.toRemote.add.push(new Task(taskListCurrent, lineWithoutId, file.stat.mtime))
+                            } 
+                            else{
+                                this.knownDeltaForTasks.toRemote.modify.push(new Task(taskListCurrent, line, file.stat.mtime))
+                            }
+                        }
+                    }
+                    if(Object.keys(duplicateIds).length > 0){
+                        await this.obsidianUtils.getVault().modify(file, taskListContents);
+                        await this.fetchTasksFromKanbanCards();
+                        return this.deltaStatus();
+                    }
 
-                //check if file is in this.kanbancards
-                //if it is, analyze it's current tasks (obv. post write/modification)        
+                    logger.debug("no duplicate ids found in", file)
+                    const previousCachedTasks = await this.cachedTaskLists.find(list => list.id === taskListCurrent.id)
+                    const diff = DeltaResolver.getTaskDeltas(taskListCurrent.tasks, previousCachedTasks?.tasks ?? [])
+                    console.debug(taskListCurrent, previousCachedTasks, idCounts, diff)
 
-                //if there's duplicate ID's, delete the ids on the newer due-dated task
-
-                //compare to existing, corresponding tasks in the kanban card in the cached list
-
-                //add to known delta accordingly.
-                logger.debug("finished analysis | modify of", abstractFile)
+                    if(previousCachedTasks){                        
+                        for(const task of diff.toOrigin.add){
+                            let alreadyTakenOutOfPresumedAddition = false
+                            for(const knownTaskAdd of diff.toRemote.add){
+                                if(task.hasSameProperties(knownTaskAdd)){
+                                    const indexOfTaskAdd = this.knownDeltaForTasks.toRemote.add.findIndex(t => t.hasSameProperties(knownTaskAdd))
+                                    this.knownDeltaForTasks.toRemote.add.splice(indexOfTaskAdd, 1)
+                                    alreadyTakenOutOfPresumedAddition = true
+                                    break;
+                                }
+                            }
+                            if(!alreadyTakenOutOfPresumedAddition && previousCachedTasks.tasks.length > taskListCurrent.tasks.length){
+                                this.knownDeltaForTasks.toRemote.delete.push(task)
+                            }
+                        }
+                        for(const task of diff.toRemote.modify){
+                            if(task.id !== ""){
+                                let existingModificationTaskIndex = this.knownDeltaForTasks.toRemote.modify.findIndex(t => t.isAnOlderVersionOf(task));
+                                if(existingModificationTaskIndex !== -1){
+                                    this.knownDeltaForTasks.toRemote.modify.splice(existingModificationTaskIndex, 1, task)
+                                }
+                                else{
+                                    this.knownDeltaForTasks.toRemote.modify.push(task)
+                                }
+                            }
+                        }
+                    }
+                }
+                
+                await this.fetchTasksFromKanbanCards();
+                logger.debug("finished analysis | modify of", abstractFile, this.knownDeltaForTaskLists, this.knownDeltaForTasks)
                 return this.deltaStatus();
             }
         );
     }
 
     async queueDeletionToRemote(abstractFile: TAbstractFile) {
-        if(!(await this.taskManager.isAbstractFileKanbanCard(abstractFile))){
-            return this.deltaStatus();//not kanban so idc
-        }
         logger.debug('analysis deleted', abstractFile)
         return await this.runJobWithNoResolutionProcessCollision(
             ProcessType.DELETE,
@@ -334,7 +437,8 @@ export default class TaskSync {
                 else{
                     logger.debug("not a kanban card to delete")
                 }
-                logger.debug("finished analysis | delete of", abstractFile)
+                await this.fetchTasksFromKanbanCards();
+                logger.debug("finished analysis | delete of", abstractFile, this.knownDeltaForTaskLists, this.knownDeltaForTasks)
                 return this.deltaStatus();
             }
         )
