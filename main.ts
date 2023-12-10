@@ -1,4 +1,4 @@
-import { Plugin, Notice, MarkdownView, Editor } from 'obsidian';
+import { Plugin, Notice, MarkdownView, Editor, Platform } from 'obsidian';
 
 import ToDoSettings, { DEFAULT_SETTINGS } from 'lib/model/ToDoSettings';
 import SettingsTab from 'lib/view/SettingsTab';
@@ -19,6 +19,9 @@ export default class ToDoPlugin extends Plugin {
 	areButtonsAndRibbonSetUp = false
 	
 	async onload() {
+		if(Platform.isMobile){
+			return
+		}
 		try{
 			await this.loadSettings();
 		} catch(e){
@@ -73,7 +76,7 @@ export default class ToDoPlugin extends Plugin {
 			this.taskSync.setGraphClient(graphClient);
 
 			this.app.workspace.onLayoutReady(async () => {
-				logger.debug('MS LOGINEVENT AND LAYOUT READY')
+				logger.debug('MS LOGIN EVENT AND LAYOUT READY')
 				if(this.areButtonsAndRibbonSetUp){
 					logger.debug("ALREADY SET UP ONCE, SKIPPING")
 					return
