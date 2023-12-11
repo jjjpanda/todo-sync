@@ -66,6 +66,18 @@ export default class SettingsTab extends PluginSettingTab {
             });
 
 		new Setting(containerEl)
+            .setName('Plugin Syncing Enabled')
+            .setDesc('Enables Microsoft To-Do Syncing, otherwise only offline features are avaiable (task reordering and task card selector).')
+            .addToggle(toggle => {
+                toggle
+					.onChange(async (value) => {
+						this.plugin.settings.SYNC_ENABLED = value;
+						await this.plugin.saveSettings();
+					})
+					.setValue(this.plugin.settings.SYNC_ENABLED);
+            });
+
+		new Setting(containerEl)
 			.setName('Auth Server Port')
 			.setDesc('Authentication Daemon Port')
 			.addText(text => text

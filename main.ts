@@ -19,9 +19,6 @@ export default class ToDoPlugin extends Plugin {
 	areButtonsAndRibbonSetUp = false
 	
 	async onload() {
-		if(Platform.isMobile){
-			return
-		}
 		try{
 			await this.loadSettings();
 		} catch(e){
@@ -31,52 +28,87 @@ export default class ToDoPlugin extends Plugin {
 
 		this.taskSync = new TaskSync(this.app, this.settings);
 		
-		try{
-			await this.taskSync.server.stop()
-			await this.taskSync.server.start()
-		} catch (err){
-			this.throwErrorAndQuit(new Error(err), `Server didn't start`)
-		}		
+		if(this.settings.SYNC_ENABLED){
+			try{
+				await this.taskSync.server.stop()
+				await this.taskSync.server.start()
+			} catch (err){
+				this.throwErrorAndQuit(new Error(err), `Server didn't start`)
+			}
 		
-		const statusBarNameFromMS = this.addStatusBarItem();
-		statusBarNameFromMS.setText("Loading...")
+			const statusBarNameFromMS = this.addStatusBarItem();
+			statusBarNameFromMS.setText("Loading...")
 
-		const syncButtonOnStatusBar = this.addStatusBarItem();
-		syncButtonOnStatusBar.createEl("div", {attr: {id: "syncButtonOnStatusBar"}})
-		const possibleTaskSyncButton = document.getElementById("syncButtonOnStatusBar") 
-		if(possibleTaskSyncButton === null){
-			this.throwErrorAndQuit(new Error("Set Up Error"), "No Sync Button on Status Bar")
+			const syncButtonOnStatusBar = this.addStatusBarItem();
+			syncButtonOnStatusBar.createEl("div", {attr: {id: "syncButtonOnStatusBar"}})
+			const possibleTaskSyncButton = document.getElementById("syncButtonOnStatusBar") 
+			if(possibleTaskSyncButton === null){
+				this.throwErrorAndQuit(new Error("Set Up Error"), "No Sync Button on Status Bar")
+			}
+			else{
+				this.taskSyncStatus = possibleTaskSyncButton
+			}
+			
+			try{
+				await this.taskSync.server.signIn(this.app.workspace)
+			} catch(error){
+				this.throwErrorAndQuit(new Error("sign in failed"), "error with logging in")
+			}
+
+			this.registerDomEvent(document, "change", async (evt: MSLoginEvent) => {
+				const session = this.taskSync.server.getSession()
+				logger.info("login event", session, evt)
+
+				if(!session.loggedIn){
+					this.throwErrorAndQuit(new Error("not logged in"), "error with logging in")
+				}
+
+				const user = this.taskSync.server.getUsers(session.userId)
+				statusBarNameFromMS.setText(user.displayName);
+				this.taskSyncStatus.innerHTML = "⟳ fetching..."
+
+				const graphClient = this.taskSync.server.getGraphClient();
+				if(!graphClient){
+					this.throwErrorAndQuit(new Error("no graph client available"), "no graph client to get microsoft to-do list")
+				}
+				this.taskSync.setGraphClient(graphClient);
+
+				this.app.workspace.onLayoutReady(async () => {
+					logger.debug('MS LOGIN EVENT AND LAYOUT READY')
+					if(this.areButtonsAndRibbonSetUp){
+						logger.debug("ALREADY SET UP ONCE, SKIPPING")
+						return
+					}
+
+					if(!this.taskSync.getCards() || this.taskSync.getCards().length === 0){
+						await this.taskSync.syncCards()
+					}
+					
+					this.setUpTaskFileSelectorRibbon();
+					this.setUpReorderTasksRibbon();
+					this.setUpReorderTasksCommand();
+
+					this.setUpVaultEventListeners();
+					this.taskSyncStatus.innerHTML = await this.taskSync.fetchDelta()
+					this.setUpTaskSyncCommand();
+					this.setUpTaskSyncRibbon();
+
+					this.registerInterval(
+						window.setInterval(
+							async () => {
+								this.taskSyncStatus.innerHTML = await this.taskSync.fetchDelta()
+							}, 
+							Number(this.settings.FETCH_RATE) * 1000
+						)
+					)
+
+					this.areButtonsAndRibbonSetUp = true;
+				})
+				
+			})
 		}
 		else{
-			this.taskSyncStatus = possibleTaskSyncButton
-		}
-		
-		try{
-			await this.taskSync.server.signIn(this.app.workspace)
-		} catch(error){
-			this.throwErrorAndQuit(new Error("sign in failed"), "error with logging in")
-		}
-		
-		this.registerDomEvent(document, "change", async (evt: MSLoginEvent) => {
-			const session = this.taskSync.server.getSession()
-			logger.info("login event", session, evt)
-
-			if(!session.loggedIn){
-				this.throwErrorAndQuit(new Error("not logged in"), "error with logging in")
-			}
-
-			const user = this.taskSync.server.getUsers(session.userId)
-			statusBarNameFromMS.setText(user.displayName);
-			this.taskSyncStatus.innerHTML = "⟳ fetching..."
-
-			const graphClient = this.taskSync.server.getGraphClient();
-			if(!graphClient){
-				this.throwErrorAndQuit(new Error("no graph client available"), "no graph client to get microsoft to-do list")
-			}
-			this.taskSync.setGraphClient(graphClient);
-
 			this.app.workspace.onLayoutReady(async () => {
-				logger.debug('MS LOGIN EVENT AND LAYOUT READY')
 				if(this.areButtonsAndRibbonSetUp){
 					logger.debug("ALREADY SET UP ONCE, SKIPPING")
 					return
@@ -89,25 +121,10 @@ export default class ToDoPlugin extends Plugin {
 				this.setUpTaskFileSelectorRibbon();
 				this.setUpReorderTasksRibbon();
 				this.setUpReorderTasksCommand();
-
-				this.setUpVaultEventListeners();
-				this.taskSyncStatus.innerHTML = await this.taskSync.fetchDelta()
-				this.setUpTaskSyncCommand();
-				this.setUpTaskSyncRibbon();
-
-				this.registerInterval(
-					window.setInterval(
-						async () => {
-							this.taskSyncStatus.innerHTML = await this.taskSync.fetchDelta()
-						}, 
-						Number(this.settings.FETCH_RATE) * 1000
-					)
-				)
-
+				
 				this.areButtonsAndRibbonSetUp = true;
 			})
-			
-		})
+		}
 	}
 
 	private setUpTaskSyncRibbon() {
@@ -150,9 +167,12 @@ export default class ToDoPlugin extends Plugin {
 			id: 'reorder-tasks-on-page',
 			name: 'Reorder Tasks',
 			editorCallback: (editor: Editor, ctx) => {
-				this.taskSync.fetchDelta().then(result => {
-					this.taskSyncStatus.innerHTML = result
-				});
+				if(this.settings.SYNC_ENABLED){
+					this.taskSync.fetchDelta().then(result => {
+						this.taskSyncStatus.innerHTML = result
+					});
+				}
+				
 				reorderCheckboxes("source", editor);
 			},
 		});
@@ -163,18 +183,18 @@ export default class ToDoPlugin extends Plugin {
 			'arrow-up-down',
 			"Reorder Tasks",
 			(evt: MouseEvent) => {
-				const view = this.app.workspace.getActiveViewOfType(MarkdownView);
-				if (!view) {
+				if(this.settings.SYNC_ENABLED){
 					this.taskSync.fetchDelta().then(result => {
 						this.taskSyncStatus.innerHTML = result
 					});
+				}
+
+				const view = this.app.workspace.getActiveViewOfType(MarkdownView);
+				if (!view) {
 					return;
 				}
 				const editor = view.editor;
 				if (editor) {
-					this.taskSync.fetchDelta().then(result => {
-						this.taskSyncStatus.innerHTML = result
-					});
 					reorderCheckboxes(view.getMode(), editor, this.app.vault, view.file);
 				}
 			}

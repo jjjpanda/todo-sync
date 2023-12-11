@@ -20,6 +20,7 @@ export default class TaskOpenerModal extends FuzzySuggestModal<TFile> {
     }
 
     onChooseItem(item, evt) {
+        this.taskSync.syncCards();
         this.app.workspace.openLinkText(item.path, '', true, {active: true});
     }
 }
