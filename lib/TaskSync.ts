@@ -11,9 +11,9 @@ import {App, Notice, TAbstractFile, TFile} from "obsidian"
 import Delta from "./model/Delta";
 import TaskList from "./model/TaskList";
 import Task from "./model/Task";
-import { randomUUID } from "crypto";
 import ProcessType from "./model/ProcessType";
 import moment from "moment";
+import { generateUUID } from "./util/ID";
 
 const logger = new Logger("TaskSync")
 
@@ -57,9 +57,10 @@ export default class TaskSync {
             [... this.processQueue.map(({trace, type, running}) => ({trace, type: ProcessType[type], running})) ]
         )
     }
+    
 
     submitToQueue(type: ProcessType): string{
-        const trace = randomUUID();
+        const trace = generateUUID();
         this.processQueue.push({
             trace,
             type,
