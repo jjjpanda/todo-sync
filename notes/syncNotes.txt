@@ -31,3 +31,10 @@ compare -> create delta (using queued toRemote list)
 
 add IDs of remote additions in origin
 reset toRemote list
+
+let removeId = async (filePath) => {
+    const file = app.vault.getAbstractFileByPath(filePath)
+    const contents = await app.vault.read(file)
+    const newContents = contents.replaceAll(/%%\[id:: [A-Za-z0-9_=]*\]%%\s/g, "").replaceAll(/<!---[A-Za-z0-9_=]*--->/g, "");
+    await app.vault.modify(file, newContents)
+}
