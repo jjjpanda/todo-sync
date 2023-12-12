@@ -35,6 +35,6 @@ reset toRemote list
 let removeId = async (filePath) => {
     const file = app.vault.getAbstractFileByPath(filePath)
     const contents = await app.vault.read(file)
-    const newContents = contents.replaceAll(/%%\[id:: [A-Za-z0-9_=]*\]%%\s/g, "").replaceAll(/<!---[A-Za-z0-9_=]*--->/g, "");
+    const newContents = contents.replaceAll(/%%\[id:: [A-Za-z0-9-_=]*\]%%\s/g, "").replaceAll(/<!---[A-Za-z0-9-_=]*--->/g, "");
     await app.vault.modify(file, newContents)
 }
