@@ -1,7 +1,6 @@
 import Task from "../model/Task"
 import TaskList from "../model/TaskList";
 import { App, FileSystemAdapter, TFile, TAbstractFile, Vault } from 'obsidian';
-import path from 'path';
 import Logger from "./logger";    
 import TaskManager from "lib/TaskManager";
 
@@ -46,10 +45,6 @@ export default class ObsidianUtils {
 
 	getVaultDirectory(): string {
 		return this.fileSystem.getBasePath();
-	}
-
-	getPluginDirectory(): string {
-		return path.join(this.getVaultDirectory(), this.app.vault.configDir, 'plugins/todo-sync/');
 	}
 
 	async getFileContents(file: TFile): Promise<string> {

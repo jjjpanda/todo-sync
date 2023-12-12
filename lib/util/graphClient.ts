@@ -1,10 +1,17 @@
-import {Client} from "@microsoft/microsoft-graph-client"
 import Logger from "./logger"
 import ToDoSettings from "lib/model/ToDoSettings";
 import ToDoTaskList from "lib/model/ToDoTaskList";
 import ToDoTask from "lib/model/ToDoTask";
 import MicrosoftGraphResponseCollection from "lib/model/MicrosoftGraphResponseCollection";
 import Throttler from "./Throttler"
+import { Platform } from "obsidian";
+
+let Client;
+if(Platform.isDesktop){
+	import("@microsoft/microsoft-graph-client").then(module => {
+		Client = module.Client
+	})
+}
 
 const logger = new Logger("GraphClient");
 export default class GraphClient {

@@ -71,7 +71,7 @@ export default class ToDoPlugin extends Plugin {
 				if(!graphClient){
 					this.throwErrorAndQuit(new Error("no graph client available"), "no graph client to get microsoft to-do list")
 				}
-				this.taskSync.setGraphClient(graphClient);
+				this.taskSync.toDoManager.setGraphClient(graphClient);
 
 				this.app.workspace.onLayoutReady(async () => {
 					logger.debug('MS LOGIN EVENT AND LAYOUT READY')

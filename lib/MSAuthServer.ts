@@ -1,21 +1,32 @@
-import express from 'express';
-import { Server } from 'http';
 import ToDoSettings from './model/ToDoSettings';
 import GraphClient from "./util/graphClient"
-import {ConfidentialClientApplication, LogLevel} from "@azure/msal-node"
 import Logger from "./util/logger"
-import { Workspace } from 'obsidian';
+import { Workspace, Platform } from 'obsidian';
+
+let ConfidentialClientApplication, LogLevel, express, Server;
+if(Platform.isDesktop){
+	import("@azure/msal-node").then(module => {
+		ConfidentialClientApplication = module.ConfidentialClientApplication
+		LogLevel = module.LogLevel
+	})
+	import("express").then(module => {
+		express = module.default
+	})
+	import("http").then(module => {
+		Server = module.Server
+	})
+}
 
 const logger = new Logger("MSAuthServer")
 export default class MSAuthServer {
-	private _app: express.Application;
+	private _app;
 	private _port = 3000;
-	private _server: Server;
+	private _server;
 	private _settings: ToDoSettings;
 	private session: {userId: string, loggedIn: boolean};
 	private msalConfig: {}
 	private graphClient: GraphClient
-	private msalClient: ConfidentialClientApplication
+	private msalClient
 	private users: {}
 
 	constructor(settings: ToDoSettings) {

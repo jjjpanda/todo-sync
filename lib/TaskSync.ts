@@ -6,7 +6,6 @@ import TaskManager from "./TaskManager";
 import MSAuthServer from "./MSAuthServer";
 import Logger from "./util/logger"
 import ToDoSettings from "./model/ToDoSettings";
-import GraphClient from "./util/graphClient";
 import {App, Notice, TAbstractFile, TFile} from "obsidian"
 import Delta from "./model/Delta";
 import TaskList from "./model/TaskList";
@@ -33,7 +32,9 @@ export default class TaskSync {
         this.obsidianUtils = new ObsidianUtils(app, settings.NEW_CARD_TEMPLATE)
         this.taskManager = new TaskManager(this.obsidianUtils, settings.TASK_FOLDER)
         this.toDoManager = new ToDoManager()
-        this.server = new MSAuthServer(settings)
+        if(settings.SYNC_ENABLED){
+            this.server = new MSAuthServer(settings)
+        }
         this.lastFetchFailed = false
         this.processQueue = []
         this.cachedTaskLists = []
@@ -45,10 +46,6 @@ export default class TaskSync {
 
     getCards() {
         return this.taskManager.kanbanCards
-    }
-
-    setGraphClient(graphClient: GraphClient | null){
-        this.toDoManager.setGraphClient(graphClient)
     }
 
     printProcessQueue(){
